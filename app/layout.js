@@ -124,12 +124,8 @@ const RootLayout = memo(({ children }) => {
           </main>
 
           {/* FOOTER */}
-          <footer className="w-full border-t bg-white/80 backdrop-blur-sm">
-            <div className="mx-auto max-w-7xl px-4 py-4">
-              <div className="text-center text-sm text-gray-600">
-                © 2024 Giancarlo Padel Championship. Tutti i diritti riservati.
-              </div>
-            </div>
+          <footer className="text-center py-4 text-gray-600 text-sm">
+            © 2025 NicoProgrammer. Tutti i diritti riservati.
           </footer>
         </div>
       </body>
