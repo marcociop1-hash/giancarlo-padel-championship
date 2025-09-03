@@ -1,8 +1,0 @@
-{
-  "/admin/page": "app/admin/page.js",
-  "/page": "app/page.js",
-  "/api/admin/check-status/route": "app/api/admin/check-status/route.js",
-  "/api/admin/freeze-matchday/route": "app/api/admin/freeze-matchday/route.js",
-  "/api/admin/recovery-matches/route": "app/api/admin/recovery-matches/route.js",
-  "/api/classifica/route": "app/api/classifica/route.js"
-}
