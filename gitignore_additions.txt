@@ -1,0 +1,4 @@
+# Ambiente locale
+.env*
+# Firebase local cache
+.firebase/
