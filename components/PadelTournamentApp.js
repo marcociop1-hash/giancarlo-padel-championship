@@ -503,8 +503,7 @@ export default function PadelTournamentApp() {
       <div className="rounded-xl border bg-white p-4">
         <div className="flex items-center justify-between gap-3">
           <div className="text-sm text-gray-500">
-            {m.phase ? (m.phase === "fase1" ? "Fase 1" : "Fase 2") : "—"}{" "}
-            {m.round ? `• R${m.round}` : ""}{" "}
+            {m.round ? `R${m.round}` : ""}{" "}
             {typeof m.position === "number" ? `• P${m.position}` : ""}
           </div>
           <StatusBadge status={m.status} />
