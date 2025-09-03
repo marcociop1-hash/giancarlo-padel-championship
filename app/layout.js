@@ -81,28 +81,28 @@ const RootLayout = memo(({ children }) => {
               
               {/* NAVIGAZIONE - Solo per admin */}
               {user && isUserAdmin(user) && (
-                <nav className="flex items-center gap-2 sm:gap-4">
+                <nav className="flex items-center gap-1 sm:gap-2 md:gap-4 flex-wrap">
                   <a 
                     href="/" 
-                    className="text-xs sm:text-sm text-gray-700 hover:text-emerald-600 transition-colors"
+                    className="text-xs sm:text-sm text-gray-700 hover:text-emerald-600 transition-colors px-1 py-1 rounded hover:bg-gray-100"
                   >
                     Home
                   </a>
                   <a 
                     href="/classifica" 
-                    className="text-xs sm:text-sm text-gray-700 hover:text-emerald-600 transition-colors"
+                    className="text-xs sm:text-sm text-gray-700 hover:text-emerald-600 transition-colors px-1 py-1 rounded hover:bg-gray-100"
                   >
                     Classifica
                   </a>
                   <a 
                     href="/supercoppa" 
-                    className="text-xs sm:text-sm text-gray-700 hover:text-emerald-600 transition-colors"
+                    className="text-xs sm:text-sm text-gray-700 hover:text-emerald-600 transition-colors px-1 py-1 rounded hover:bg-gray-100"
                   >
                     Supercoppa
                   </a>
                   <a 
                     href="/admin" 
-                    className="text-xs sm:text-sm text-gray-700 hover:text-emerald-600 transition-colors"
+                    className="text-xs sm:text-sm text-gray-700 hover:text-emerald-600 transition-colors px-1 py-1 rounded hover:bg-gray-100"
                   >
                     Admin
                   </a>
