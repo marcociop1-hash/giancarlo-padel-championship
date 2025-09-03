@@ -585,6 +585,27 @@ export default function PadelTournamentApp() {
     );
   }
 
+  const getFullTabName = (key) => {
+    switch (key) {
+      case "home":
+        return "Home";
+      case "mie":
+        return "Le mie partite";
+      case "calendario":
+        return "Calendario";
+      case "classifica":
+        return "Classifica";
+      case "supercoppa":
+        return "Supercoppa";
+      case "recuperi":
+        return "Partite da Recuperare";
+      case "profilo":
+        return "Profilo";
+      default:
+        return "";
+    }
+  };
+
   return (
     <div className="mx-auto max-w-4xl">
       {/* Header / Tabs */}
@@ -626,28 +647,32 @@ export default function PadelTournamentApp() {
           </div>
         </div>
 
-        {/* Tabs per mobile */}
+        {/* Tabs per mobile - Con icone per maggiore chiarezza */}
         <div className="mt-3 flex gap-1 sm:hidden overflow-hidden">
           {[
-            ["home", "Home"],
-            ["mie", "Mie"],
-            ["calendario", "Cal."],
-            ["classifica", "Class."],
-            ["supercoppa", "Super."],
-            ["recuperi", "Rec."],
-            ["profilo", "Profilo"],
-          ].map(([key, label]) => (
+            ["home", "🏠", "Home"],
+            ["mie", "👤", "Mie"],
+            ["calendario", "📅", "Cal."],
+            ["classifica", "🏆", "Class."],
+            ["supercoppa", "⚡", "Super."],
+            ["recuperi", "⏸️", "Rec."],
+            ["profilo", "⚙️", "Prof."],
+          ].map(([key, icon, shortLabel]) => (
             <button
               key={key}
               onClick={() => setTab(key)}
-              className={`flex-1 min-w-0 rounded-lg border px-1.5 py-2 text-xs font-medium transition-all ${
+              className={`flex-1 min-w-0 rounded-lg border px-1 py-2.5 text-center transition-all relative ${
                 tab === key
                   ? "bg-emerald-600 text-white border-emerald-600 shadow-lg"
                   : "bg-white text-gray-700 hover:bg-gray-50 border-gray-300"
               }`}
-              title={label}
+              title={`${shortLabel} - ${getFullTabName(key)}`}
             >
-              <span className="truncate block text-center leading-none">{label}</span>
+              {tab === key && (
+                <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-emerald-400 rounded-full"></div>
+              )}
+              <div className={`text-base mb-0.5 ${tab === key ? 'text-white' : 'text-gray-600'}`}>{icon}</div>
+              <div className="text-xs font-medium leading-none">{shortLabel}</div>
             </button>
           ))}
         </div>
