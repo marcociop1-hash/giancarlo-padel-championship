@@ -813,18 +813,18 @@ export default function AdminPage() {
           Verifica lo stato attuale del torneo e pulisci eventuali inconsistenze. "Pulisci Stato" cancella TUTTE le partite e standings.
         </p>
         
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <button
             onClick={handleCheckStatus}
             disabled={checkingStatus}
-            className="rounded-xl px-4 py-2 bg-blue-600 text-white hover:bg-blue-700"
+            className="rounded-xl px-3 sm:px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 text-sm sm:text-base"
           >
             {checkingStatus ? "Verifica in corso…" : "Verifica Stato"}
           </button>
           <button
             onClick={handleCleanStatus}
             disabled={cleaningStatus}
-            className="rounded-xl px-4 py-2 bg-orange-600 text-white hover:bg-orange-700"
+            className="rounded-xl px-3 sm:px-4 py-2 bg-orange-600 text-white hover:bg-orange-700 text-sm sm:text-base"
           >
             {cleaningStatus ? "Pulizia in corso…" : "Pulisci Stato"}
           </button>
@@ -843,19 +843,17 @@ export default function AdminPage() {
                 alert('Errore: ' + e.message);
               }
             }}
-            className="rounded-xl px-4 py-2 bg-green-600 text-white hover:bg-green-700"
+            className="rounded-xl px-3 sm:px-4 py-2 bg-green-600 text-white hover:bg-green-700 text-sm sm:text-base"
           >
             Aggiorna Classifica
           </button>
 
           <button
             onClick={() => window.open('/classifica', '_blank')}
-            className="rounded-xl px-4 py-2 bg-purple-600 text-white hover:bg-purple-700"
+            className="rounded-xl px-3 sm:px-4 py-2 bg-purple-600 text-white hover:bg-purple-700 text-sm sm:text-base"
           >
             Apri Classifica
           </button>
-
-
 
           <button
             onClick={async () => {
@@ -883,7 +881,7 @@ export default function AdminPage() {
                 alert('Errore: ' + e.message);
               }
             }}
-            className="rounded-xl px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700"
+            className="rounded-xl px-3 sm:px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 text-sm sm:text-base"
           >
             Verifica Stato Campionato
           </button>
