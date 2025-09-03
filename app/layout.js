@@ -67,14 +67,21 @@ const RootLayout = memo(({ children }) => {
         <div className="min-h-dvh bg-padel-gradient flex flex-col">
           {/* TOP BAR */}
           <header className="w-full border-b bg-white/80 backdrop-blur-sm">
-            <div className="mx-auto max-w-7xl flex h-14 items-center justify-between px-4">
-              <div className="flex items-center gap-2 font-semibold text-emerald-900">
-                🎾 Giancarlo Padel Championship
+            <div className="mx-auto max-w-7xl flex h-14 items-center justify-between px-3 sm:px-4">
+              <div className="flex items-center gap-2 font-semibold text-emerald-900 min-w-0">
+                <span className="text-lg sm:text-xl">🎾</span>
+                <div className="hidden sm:block">
+                  <span className="text-sm sm:text-base">Giancarlo Padel Championship</span>
+                </div>
+                <div className="sm:hidden text-xs">
+                  <div className="leading-tight">Giancarlo</div>
+                  <div className="leading-tight">Padel</div>
+                </div>
               </div>
               
               {/* NAVIGAZIONE - Solo per admin */}
               {user && isUserAdmin(user) && (
-                <nav className="flex items-center gap-4">
+                <nav className="hidden lg:flex items-center gap-4">
                   <a 
                     href="/" 
                     className="text-sm text-gray-700 hover:text-emerald-600 transition-colors"
@@ -103,13 +110,13 @@ const RootLayout = memo(({ children }) => {
               )}
               
               {user ? (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="hidden text-sm text-gray-700 sm:block">
                     {user.email}
                   </span>
                   <button
                     onClick={handleLogout}
-                    className="rounded-md bg-gray-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-800 transition-colors"
+                    className="rounded-md bg-gray-700 px-2 sm:px-3 py-1.5 text-xs sm:text-sm font-medium text-white hover:bg-gray-800 transition-colors whitespace-nowrap"
                   >
                     Logout
                   </button>
@@ -119,7 +126,7 @@ const RootLayout = memo(({ children }) => {
           </header>
 
           {/* CONTENUTO */}
-          <main className="flex-1 mx-auto w-full max-w-7xl px-4 py-6">
+          <main className="flex-1 mx-auto w-full max-w-7xl px-3 sm:px-4 py-4 sm:py-6">
             {children}
           </main>
 
