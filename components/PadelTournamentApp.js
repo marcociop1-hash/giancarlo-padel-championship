@@ -627,7 +627,7 @@ export default function PadelTournamentApp() {
         </div>
 
         {/* Tabs per mobile */}
-        <div className="mt-3 flex gap-2 sm:hidden">
+        <div className="mt-3 flex gap-1 sm:hidden overflow-hidden">
           {[
             ["home", "Home"],
             ["mie", "Mie"],
@@ -640,14 +640,14 @@ export default function PadelTournamentApp() {
             <button
               key={key}
               onClick={() => setTab(key)}
-              className={`rounded-lg border px-3 py-1 text-sm ${
+              className={`flex-1 min-w-0 rounded-lg border px-1.5 py-2 text-xs font-medium transition-all ${
                 tab === key
-                  ? "bg-emerald-600 text-white border-emerald-600"
-                  : "bg-white text-gray-700 hover:bg-gray-50"
+                  ? "bg-emerald-600 text-white border-emerald-600 shadow-lg"
+                  : "bg-white text-gray-700 hover:bg-gray-50 border-gray-300"
               }`}
               title={label}
             >
-              {label}
+              <span className="truncate block text-center leading-none">{label}</span>
             </button>
           ))}
         </div>
