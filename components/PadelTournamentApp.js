@@ -732,8 +732,8 @@ export default function PadelTournamentApp() {
         {tab === "calendario" && (
           <div className="space-y-4">
             {/* FILTRI */}
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-1">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Chip
                   active={statusFilter === "all"}
                   onClick={() => setStatusFilter("all")}
@@ -759,9 +759,9 @@ export default function PadelTournamentApp() {
                   Giocate
                 </Chip>
               </div>
-              <div className="ml-auto">
+              <div className="sm:ml-auto w-full sm:w-auto">
                 <input
-                  className="rounded-md border px-3 py-1.5 text-sm"
+                  className="w-full sm:w-auto rounded-md border px-3 py-1.5 text-sm"
                   placeholder="Cerca giocatore o campo…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
