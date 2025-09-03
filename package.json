@@ -8,6 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "critters": "^0.0.23",
     "firebase": "^10.12.2",
     "firebase-admin": "^13.4.0",
     "lucide-react": "^0.344.0",
