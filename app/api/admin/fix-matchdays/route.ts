@@ -25,7 +25,7 @@ export async function POST() {
       return NextResponse.json({ error: 'No championship matches found' }, { status: 404 });
     }
 
-    const matches = matchesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const matches = matchesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
     
     // Raggruppa le partite per giornata (usando il campo giornata o createdAt)
     const matchesByGiornata = new Map<number, any[]>();
@@ -96,7 +96,7 @@ export async function GET() {
       return NextResponse.json({ error: 'No championship matches found' }, { status: 404 });
     }
 
-    const matches = matchesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const matches = matchesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
     
     // Raggruppa per matchday
     const matchesByMatchday = new Map<number, any[]>();
