@@ -27,42 +27,31 @@ export async function POST() {
 
     const matches = matchesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
     
-    // Raggruppa le partite per giornata (usando il campo giornata o createdAt)
-    const matchesByGiornata = new Map<number, any[]>();
-    
-    matches.forEach(match => {
-      // Usa il campo giornata se disponibile, altrimenti createdAt
-      const giornataKey = match.giornata || match.createdAt?.toMillis() || 0;
-      
-      if (!matchesByGiornata.has(giornataKey)) {
-        matchesByGiornata.set(giornataKey, []);
-      }
-      matchesByGiornata.get(giornataKey)!.push(match);
+    // Ordina le partite per data di creazione
+    const sortedMatches = matches.sort((a, b) => {
+      const aTime = a.giornata || a.createdAt?.toMillis() || 0;
+      const bTime = b.giornata || b.createdAt?.toMillis() || 0;
+      return aTime - bTime;
     });
-
-    // Ordina le giornate per timestamp
-    const sortedGiornate = Array.from(matchesByGiornata.keys()).sort((a, b) => a - b);
     
-    console.log(`Found ${sortedGiornate.length} giornate:`, sortedGiornate);
-
-    // Assegna i matchday corretti
+    console.log(`Found ${sortedMatches.length} partite totali`);
+    
+    // Assegna i matchday corretti: ogni 2 partite = 1 giornata
     const batch = db.batch();
     let totalUpdated = 0;
 
-    sortedGiornate.forEach((giornataKey, index) => {
-      const matchday = index + 1;
-      const matchesInGiornata = matchesByGiornata.get(giornataKey)!;
+    sortedMatches.forEach((match, index) => {
+      // Calcola il matchday: ogni 2 partite = 1 giornata
+      const matchday = Math.floor(index / 2) + 1;
       
-      console.log(`Giornata ${matchday}: ${matchesInGiornata.length} partite`);
+      console.log(`Partita ${index + 1}: matchday ${matchday}`);
       
-      matchesInGiornata.forEach(match => {
-        // Aggiorna solo se il matchday è diverso
-        if (match.matchday !== matchday) {
-          const matchRef = db.collection('matches').doc(match.id);
-          batch.update(matchRef, { matchday: matchday });
-          totalUpdated++;
-        }
-      });
+      // Aggiorna solo se il matchday è diverso
+      if (match.matchday !== matchday) {
+        const matchRef = db.collection('matches').doc(match.id);
+        batch.update(matchRef, { matchday: matchday });
+        totalUpdated++;
+      }
     });
 
     if (totalUpdated > 0) {

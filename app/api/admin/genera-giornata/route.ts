@@ -126,11 +126,9 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
   const matchesSnap = await db.collection("matches").where("phase", "==", "campionato").get();
   const matches = matchesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
 
-  // Calcola il prossimo matchday
-  const existingMatchdays = matches
-    .map(m => m.matchday)
-    .filter(md => typeof md === 'number' && md > 0);
-  const nextMatchday = existingMatchdays.length > 0 ? Math.max(...existingMatchdays) + 1 : 1;
+  // Calcola il prossimo matchday: ogni 2 partite = 1 giornata
+  const totalMatches = matches.length;
+  const nextMatchday = Math.floor(totalMatches / 2) + 1;
 
   // CONTROLLO 1: Verifica che tutte le partite precedenti abbiano punteggi
   const incompleteMatches = matches.filter(m => 
