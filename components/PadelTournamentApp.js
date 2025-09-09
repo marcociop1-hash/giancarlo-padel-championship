@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState, useCallback, memo } from "react";
 import { db, auth } from "../lib/firebase";
+import { isUserAdmin } from "../lib/admin";
 import {
   collection,
   getDocs,
@@ -133,8 +134,8 @@ export default function PadelTournamentApp() {
 
   // Helper per verificare se l'utente è admin
   const isAdmin = useMemo(() => {
-    return me?.email === "admin@giancarlo-padel.com";
-  }, [me?.email]);
+    return isUserAdmin(me);
+  }, [me]);
 
   // auth - ottimizzato con useCallback
   useEffect(() => {

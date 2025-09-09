@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getApps, initializeApp, cert } from "firebase-admin/app";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
+import { isEmailAdmin } from "../../../lib/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -100,7 +101,7 @@ export async function POST(req: Request) {
     // Se si sta aggiornando il risultato (recupero partita)
     if (scoreA !== undefined && scoreB !== undefined && status) {
       // Solo l'admin può inserire risultati per partite da recuperare
-      if (userEmail !== "admin@giancarlo-padel.com") {
+      if (!isEmailAdmin(userEmail)) {
         return NextResponse.json({ error: "Solo l'admin può inserire i risultati delle partite da recuperare" }, { status: 403 });
       }
       

@@ -4,18 +4,7 @@ import "./globals.css";
 import { useEffect, useState, useCallback, memo } from "react";
 import { auth } from "../lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
-
-// Lista degli admin autorizzati
-const ADMIN_EMAILS = [
-  "test44@test44.com", // Sostituisci con l'email dell'admin
-  "admin@example.com",     // Aggiungi altre email admin se necessario
-];
-
-// Funzione per determinare se un utente è admin
-const isUserAdmin = (user) => {
-  if (!user || !user.email) return false;
-  return ADMIN_EMAILS.includes(user.email.toLowerCase());
-};
+import { isUserAdmin } from "../lib/admin";
 
 const RootLayout = memo(({ children }) => {
   const [user, setUser] = useState(null);
