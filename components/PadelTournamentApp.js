@@ -469,6 +469,12 @@ export default function PadelTournamentApp() {
     const [time, setTime] = useState(m.time || "");
     const [saving, setSaving] = useState(false);
     const [localMsg, setLocalMsg] = useState("");
+    
+    // Stato per form di recupero
+    const [showRecoveryForm, setShowRecoveryForm] = useState(false);
+    const [recoveryScoreA, setRecoveryScoreA] = useState("");
+    const [recoveryScoreB, setRecoveryScoreB] = useState("");
+    const [recoverySaving, setRecoverySaving] = useState(false);
 
     const confirmMatch = useCallback(async () => {
       if (!place || !date || !time) {
@@ -513,6 +519,62 @@ export default function PadelTournamentApp() {
       }
     }, [place, date, time, m.id, onConfirmed]);
 
+    const saveRecoveryResult = useCallback(async () => {
+      if (!recoveryScoreA || !recoveryScoreB) {
+        setLocalMsg("Inserisci entrambi i punteggi.");
+        return;
+      }
+      
+      const scoreA = parseInt(recoveryScoreA);
+      const scoreB = parseInt(recoveryScoreB);
+      
+      if (isNaN(scoreA) || isNaN(scoreB) || scoreA < 0 || scoreB < 0) {
+        setLocalMsg("Inserisci punteggi validi (numeri >= 0).");
+        return;
+      }
+      
+      setRecoverySaving(true);
+      try {
+        // Ottieni il token di autenticazione
+        const token = await auth.currentUser?.getIdToken();
+        if (!token) {
+          throw new Error("Utente non autenticato");
+        }
+
+        // Chiama l'API per aggiornare il risultato della partita
+        const response = await fetch("/api/matches/update-details", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            matchId: m.id,
+            scoreA: scoreA,
+            scoreB: scoreB,
+            status: "completed"
+          })
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || "Errore nel salvataggio");
+        }
+
+        setLocalMsg("Risultato salvato! Partita completata.");
+        setTimeout(() => setLocalMsg(""), 3000);
+        
+        // Ricarica i dati
+        window.location.reload();
+      } catch (error) {
+        console.error("Errore:", error);
+        setLocalMsg(error.message || "Errore nel salvataggio");
+      } finally {
+        setRecoverySaving(false);
+      }
+    }, [recoveryScoreA, recoveryScoreB, m.id]);
+
     return (
       <div className="rounded-xl border bg-white p-4">
         <div className="flex items-center justify-between gap-3">
@@ -531,9 +593,17 @@ export default function PadelTournamentApp() {
 
         <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-gray-600">
           {m.status === "da recuperare" ? (
-            <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium">
-              ⏸️ Da Recuperare
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium">
+                ⏸️ Da Recuperare
+              </span>
+              <button
+                onClick={() => setShowRecoveryForm(m.id)}
+                className="bg-orange-600 text-white px-3 py-1 rounded text-xs hover:bg-orange-700 transition-colors"
+              >
+                Inserisci Risultato
+              </button>
+            </div>
           ) : (
             <>
               {(m.place || place) && <span>📍 {m.place || place}</span>}
@@ -580,6 +650,57 @@ export default function PadelTournamentApp() {
                 className="rounded-md bg-teal-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-60"
               >
                 {saving ? "Salvataggio…" : "Conferma"}
+              </button>
+              {localMsg && (
+                <span className="text-xs text-gray-600">{localMsg}</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Form recupero per partite da recuperare */}
+        {m.status === "da recuperare" && showRecoveryForm && (
+          <div className="mt-3 rounded-lg border bg-orange-50 p-3">
+            <div className="mb-2 text-sm font-medium text-gray-700">
+              Inserisci risultato partita da recuperare
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Punteggio {a}</label>
+                <input
+                  className="w-full rounded-md border px-2 py-1 text-sm"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={recoveryScoreA}
+                  onChange={(e) => setRecoveryScoreA(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Punteggio {b}</label>
+                <input
+                  className="w-full rounded-md border px-2 py-1 text-sm"
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={recoveryScoreB}
+                  onChange={(e) => setRecoveryScoreB(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <button
+                onClick={saveRecoveryResult}
+                disabled={recoverySaving}
+                className="rounded-md bg-orange-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-60"
+              >
+                {recoverySaving ? "Salvataggio…" : "Salva Risultato"}
+              </button>
+              <button
+                onClick={() => setShowRecoveryForm(false)}
+                className="rounded-md bg-gray-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-600"
+              >
+                Annulla
               </button>
               {localMsg && (
                 <span className="text-xs text-gray-600">{localMsg}</span>

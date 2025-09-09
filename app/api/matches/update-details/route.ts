@@ -90,15 +90,26 @@ export async function POST(req: Request) {
     
     // Parsing del body
     const body = await req.json();
-    const { matchId, place, date, time } = body;
+    const { matchId, place, date, time, scoreA, scoreB, status } = body;
     
     // Validazione input
     if (!matchId) {
       return NextResponse.json({ error: "ID partita mancante" }, { status: 400 });
     }
     
-    if (!place || !date || !time) {
-      return NextResponse.json({ error: "Campo, data e ora sono obbligatori" }, { status: 400 });
+    // Se si sta aggiornando il risultato (recupero partita)
+    if (scoreA !== undefined && scoreB !== undefined && status) {
+      if (typeof scoreA !== "number" || typeof scoreB !== "number" || scoreA < 0 || scoreB < 0) {
+        return NextResponse.json({ error: "Punteggi non validi" }, { status: 400 });
+      }
+      if (status !== "completed") {
+        return NextResponse.json({ error: "Status non valido per il recupero" }, { status: 400 });
+      }
+    } else {
+      // Se si stanno aggiornando i dettagli (conferma partita)
+      if (!place || !date || !time) {
+        return NextResponse.json({ error: "Campo, data e ora sono obbligatori" }, { status: 400 });
+      }
     }
     
     // Recupera la partita
@@ -120,27 +131,43 @@ export async function POST(req: Request) {
     }
     
     // Verifica che la partita sia in uno stato modificabile
-    if (match.status === "completed") {
+    if (match.status === "completed" && !status) {
       return NextResponse.json({ error: "Non puoi modificare una partita già completata" }, { status: 400 });
     }
     
     // Aggiorna la partita
-    await db.collection("matches").doc(matchId).update({
-      place: place.trim(),
-      date: date.trim(),
-      time: time.trim(),
-      status: "confirmed",
-      confirmedBy: {
-        uid: userId,
-        email: decodedToken.email || null
-      },
-      confirmedAt: Timestamp.now(),
-      updatedAt: Timestamp.now()
-    });
+    if (scoreA !== undefined && scoreB !== undefined && status) {
+      // Recupero partita - aggiorna risultato e status
+      await db.collection("matches").doc(matchId).update({
+        scoreA: scoreA,
+        scoreB: scoreB,
+        status: status,
+        completedBy: {
+          uid: userId,
+          email: decodedToken.email || null
+        },
+        completedAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      });
+    } else {
+      // Conferma partita - aggiorna dettagli
+      await db.collection("matches").doc(matchId).update({
+        place: place.trim(),
+        date: date.trim(),
+        time: time.trim(),
+        status: "confirmed",
+        confirmedBy: {
+          uid: userId,
+          email: decodedToken.email || null
+        },
+        confirmedAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      });
+    }
     
     return NextResponse.json({
       ok: true,
-      message: "Dettagli partita aggiornati con successo",
+      message: scoreA !== undefined ? "Risultato partita salvato con successo" : "Dettagli partita aggiornati con successo",
       matchId
     });
     
