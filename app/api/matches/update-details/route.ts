@@ -10,13 +10,29 @@ export const dynamic = "force-dynamic";
 
 function initAdmin() {
   if (!getApps().length) {
-    const projectId = process.env.FIREBASE_PROJECT_ID;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
-    if (!projectId || !clientEmail || !privateKey) {
-      throw new Error("Mancano FIREBASE_* in .env.local");
+    // Prova prima con la chiave di servizio completa
+    const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+    
+    if (serviceAccountKey) {
+      try {
+        const serviceAccount = JSON.parse(serviceAccountKey);
+        initializeApp({
+          credential: cert(serviceAccount),
+        });
+      } catch (error) {
+        console.error("Errore nel parsing della chiave di servizio:", error);
+        throw new Error("FIREBASE_SERVICE_ACCOUNT_KEY non valida");
+      }
+    } else {
+      // Fallback al metodo precedente
+      const projectId = process.env.FIREBASE_PROJECT_ID;
+      const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+      const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+      if (!projectId || !clientEmail || !privateKey) {
+        throw new Error("Mancano FIREBASE_* in .env.local");
+      }
+      initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
     }
-    initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
   }
   return { db: getFirestore(), auth: getAuth() };
 }
