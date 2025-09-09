@@ -131,6 +131,11 @@ export default function PadelTournamentApp() {
   const [showWinnerBanner, setShowWinnerBanner] = useState(false);
   const [recoveryMatches, setRecoveryMatches] = useState([]);
 
+  // Helper per verificare se l'utente è admin
+  const isAdmin = useMemo(() => {
+    return me?.email === "admin@giancarlo-padel.com";
+  }, [me?.email]);
+
   // auth - ottimizzato con useCallback
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => setMe(u || null));
@@ -597,12 +602,18 @@ export default function PadelTournamentApp() {
               <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium">
                 ⏸️ Da Recuperare
               </span>
-              <button
-                onClick={() => setShowRecoveryForm(m.id)}
-                className="bg-orange-600 text-white px-3 py-1 rounded text-xs hover:bg-orange-700 transition-colors"
-              >
-                Inserisci Risultato
-              </button>
+              {isAdmin ? (
+                <button
+                  onClick={() => setShowRecoveryForm(m.id)}
+                  className="bg-orange-600 text-white px-3 py-1 rounded text-xs hover:bg-orange-700 transition-colors"
+                >
+                  Inserisci Risultato
+                </button>
+              ) : (
+                <span className="text-xs text-gray-500 italic">
+                  Contatta l'admin per inserire il risultato
+                </span>
+              )}
             </div>
           ) : (
             <>

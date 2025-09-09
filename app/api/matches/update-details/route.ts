@@ -99,6 +99,11 @@ export async function POST(req: Request) {
     
     // Se si sta aggiornando il risultato (recupero partita)
     if (scoreA !== undefined && scoreB !== undefined && status) {
+      // Solo l'admin può inserire risultati per partite da recuperare
+      if (userEmail !== "admin@giancarlo-padel.com") {
+        return NextResponse.json({ error: "Solo l'admin può inserire i risultati delle partite da recuperare" }, { status: 403 });
+      }
+      
       if (typeof scoreA !== "number" || typeof scoreB !== "number" || scoreA < 0 || scoreB < 0) {
         return NextResponse.json({ error: "Punteggi non validi" }, { status: 400 });
       }
