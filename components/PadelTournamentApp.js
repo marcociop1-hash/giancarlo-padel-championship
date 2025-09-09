@@ -295,13 +295,25 @@ export default function PadelTournamentApp() {
     [matches]
   );
 
+  const recovery = useMemo(
+    () =>
+      matches
+        .filter((m) => m.status === "da recuperare")
+        .sort((a, b) => {
+          const dateA = a.date || a.createdAt || 0;
+          const dateB = b.date || b.createdAt || 0;
+          return dateA - dateB || (a.id > b.id ? 1 : -1);
+        }),
+    [matches]
+  );
+
   /* ========= CALENDARIO: filtri + grouping by date ========= */
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
 
   const calendarBase = useMemo(
-    () => [...scheduled, ...confirmed, ...completed],
-    [scheduled, confirmed, completed]
+    () => [...scheduled, ...confirmed, ...completed, ...recovery],
+    [scheduled, confirmed, completed, recovery]
   );
 
   const calendarFiltered = useMemo(() => {
@@ -313,6 +325,8 @@ export default function PadelTournamentApp() {
       list = list.filter((m) => m.status === "confirmed");
     } else if (statusFilter === "completed") {
       list = list.filter((m) => m.status === "completed");
+    } else if (statusFilter === "recovery") {
+      list = list.filter((m) => m.status === "da recuperare");
     }
 
     const q = search.trim().toLowerCase();
@@ -516,12 +530,20 @@ export default function PadelTournamentApp() {
         </div>
 
         <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-gray-600">
-          {(m.place || place) && <span>📍 {m.place || place}</span>}
-          {(m.date || date) && <span>📅 {m.date || date}</span>}
-          {(m.time || time) && <span>🕒 {m.time || time}</span>}
-          {score && <span>🏁 {score}</span>}
-          {m.winnerTeam && (
-            <span>🏆 {m.winnerTeam === "A" ? a : m.winnerTeam === "B" ? b : ""}</span>
+          {m.status === "da recuperare" ? (
+            <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs font-medium">
+              ⏸️ Da Recuperare
+            </span>
+          ) : (
+            <>
+              {(m.place || place) && <span>📍 {m.place || place}</span>}
+              {(m.date || date) && <span>📅 {m.date || date}</span>}
+              {(m.time || time) && <span>🕒 {m.time || time}</span>}
+              {score && <span>🏁 {score}</span>}
+              {m.winnerTeam && (
+                <span>🏆 {m.winnerTeam === "A" ? a : m.winnerTeam === "B" ? b : ""}</span>
+              )}
+            </>
           )}
         </div>
 
@@ -781,6 +803,12 @@ export default function PadelTournamentApp() {
                   onClick={() => setStatusFilter("completed")}
                 >
                   Giocate
+                </Chip>
+                <Chip
+                  active={statusFilter === "recovery"}
+                  onClick={() => setStatusFilter("recovery")}
+                >
+                  Da Recuperare
                 </Chip>
               </div>
               <div className="sm:ml-auto w-full sm:w-auto">
