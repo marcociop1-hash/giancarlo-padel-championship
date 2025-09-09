@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getApps, initializeApp, cert } from "firebase-admin/app";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
-import { isEmailAdmin } from "../../../lib/admin";
+import { isEmailAdmin } from "../../../../lib/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
