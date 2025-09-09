@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const results = {
+    const results: any = {
       serviceAccountKey: !!process.env.FIREBASE_SERVICE_ACCOUNT_KEY,
       projectId: !!process.env.FIREBASE_PROJECT_ID,
       clientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
