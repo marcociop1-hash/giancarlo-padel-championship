@@ -525,19 +525,28 @@ export default function PadelTournamentApp() {
       }
     }, [place, date, time, m.id, onConfirmed]);
 
-    const saveRecoveryResult = useCallback(async () => {
-      if (!recoveryScoreA || !recoveryScoreB) {
-        setLocalMsg("Inserisci entrambi i punteggi.");
-        return;
-      }
-      
-      const scoreA = parseInt(recoveryScoreA);
-      const scoreB = parseInt(recoveryScoreB);
-      
-      if (isNaN(scoreA) || isNaN(scoreB) || scoreA < 0 || scoreB < 0) {
-        setLocalMsg("Inserisci punteggi validi (numeri >= 0).");
-        return;
-      }
+  const saveRecoveryResult = useCallback(async () => {
+    if (!recoveryScoreA || !recoveryScoreB) {
+      setLocalMsg("Inserisci entrambi i punteggi.");
+      return;
+    }
+    
+    const scoreA = parseInt(recoveryScoreA);
+    const scoreB = parseInt(recoveryScoreB);
+    
+    // Validazione punteggi padel (0-3, 1-2, 2-1, 3-0)
+    const validScores = [
+      [0, 3], [1, 2], [2, 1], [3, 0]
+    ];
+    
+    const isValidScore = validScores.some(([a, b]) => 
+      (scoreA === a && scoreB === b) || (scoreA === b && scoreB === a)
+    );
+    
+    if (isNaN(scoreA) || isNaN(scoreB) || !isValidScore) {
+      setLocalMsg("Punteggi non validi. Usa: 3-0, 2-1, 1-2, 0-3");
+      return;
+    }
       
       setRecoverySaving(true);
       try {
@@ -676,30 +685,35 @@ export default function PadelTournamentApp() {
             <div className="mb-2 text-sm font-medium text-gray-700">
               Inserisci risultato partita da recuperare
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">Punteggio {a}</label>
-                <input
-                  className="w-full rounded-md border px-2 py-1 text-sm"
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  value={recoveryScoreA}
-                  onChange={(e) => setRecoveryScoreA(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-600 mb-1">Punteggio {b}</label>
-                <input
-                  className="w-full rounded-md border px-2 py-1 text-sm"
-                  type="number"
-                  min="0"
-                  placeholder="0"
-                  value={recoveryScoreB}
-                  onChange={(e) => setRecoveryScoreB(e.target.value)}
-                />
-              </div>
-            </div>
+           <div className="grid grid-cols-2 gap-2">
+             <div>
+               <label className="block text-xs text-gray-600 mb-1">Punteggio {a}</label>
+               <input
+                 className="w-full rounded-md border px-2 py-1 text-sm"
+                 type="number"
+                 min="0"
+                 max="3"
+                 placeholder="0-3"
+                 value={recoveryScoreA}
+                 onChange={(e) => setRecoveryScoreA(e.target.value)}
+               />
+             </div>
+             <div>
+               <label className="block text-xs text-gray-600 mb-1">Punteggio {b}</label>
+               <input
+                 className="w-full rounded-md border px-2 py-1 text-sm"
+                 type="number"
+                 min="0"
+                 max="3"
+                 placeholder="0-3"
+                 value={recoveryScoreB}
+                 onChange={(e) => setRecoveryScoreB(e.target.value)}
+               />
+             </div>
+           </div>
+           <div className="mt-1 text-xs text-gray-500">
+             Punteggi validi: 3-0, 2-1, 1-2, 0-3
+           </div>
             <div className="mt-2 flex items-center gap-2">
               <button
                 onClick={saveRecoveryResult}

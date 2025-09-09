@@ -105,8 +105,17 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Solo l'admin può inserire i risultati delle partite da recuperare" }, { status: 403 });
       }
       
-      if (typeof scoreA !== "number" || typeof scoreB !== "number" || scoreA < 0 || scoreB < 0) {
-        return NextResponse.json({ error: "Punteggi non validi" }, { status: 400 });
+      // Validazione punteggi padel (0-3, 1-2, 2-1, 3-0)
+      const validScores = [
+        [0, 3], [1, 2], [2, 1], [3, 0]
+      ];
+      
+      const isValidScore = validScores.some(([a, b]) => 
+        (scoreA === a && scoreB === b) || (scoreA === b && scoreB === a)
+      );
+      
+      if (typeof scoreA !== "number" || typeof scoreB !== "number" || !isValidScore) {
+        return NextResponse.json({ error: "Punteggi non validi. Usa: 3-0, 2-1, 1-2, 0-3" }, { status: 400 });
       }
       if (status !== "completed") {
         return NextResponse.json({ error: "Status non valido per il recupero" }, { status: 400 });
