@@ -58,11 +58,14 @@ export async function POST() {
       await batch.commit();
     }
 
+    // Calcola il numero totale di giornate
+    const totalGiornate = Math.ceil(sortedMatches.length / 2);
+
     return NextResponse.json({
       success: true,
       message: `Fixed matchdays for ${totalUpdated} matches`,
       totalMatches: matches.length,
-      totalGiornate: sortedGiornate.length,
+      totalGiornate: totalGiornate,
       updatedMatches: totalUpdated
     });
 
