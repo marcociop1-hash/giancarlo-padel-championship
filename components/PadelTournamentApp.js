@@ -940,7 +940,7 @@ export default function PadelTournamentApp() {
                       <div className="flex justify-between items-start">
                         <div className="flex-1">
                           <div className="font-medium text-gray-800 mb-2">
-                            Giornata {match.originalMatchday || match.matchday}
+                            Giornata {match.matchday || 'N/A'}
                           </div>
                           <div className="text-sm text-gray-600 mb-2">
                             {teamLabel(match.teamA, playersMap)} vs {teamLabel(match.teamB, playersMap)}

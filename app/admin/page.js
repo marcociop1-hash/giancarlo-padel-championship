@@ -772,7 +772,7 @@ export default function AdminPage() {
                 <div key={match.id} className="p-3 border rounded-lg bg-yellow-50">
                   <div className="flex justify-between items-start mb-2">
                     <div className="text-sm">
-                      <div className="font-medium">Giornata {match.originalMatchday || match.matchday}</div>
+                      <div className="font-medium">Giornata {match.matchday || 'N/A'}</div>
                       <div className="text-gray-600">
                         {normalizeTeam(match.teamA).a.name} + {normalizeTeam(match.teamA).b.name} vs {' '}
                         {normalizeTeam(match.teamB).a.name} + {normalizeTeam(match.teamB).b.name}
