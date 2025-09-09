@@ -155,11 +155,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Dati partita non disponibili" }, { status: 500 });
     }
     
-    // Verifica che l'utente sia uno dei giocatori della partita
-    const isPlayer = await isPlayerInMatch(db, match, userEmail);
-    if (!isPlayer) {
-      return NextResponse.json({ error: "Non sei autorizzato a modificare questa partita. Verifica di essere uno dei giocatori della partita e che il tuo account sia collegato al tuo profilo giocatore." }, { status: 403 });
+    // Se si sta aggiornando il risultato (recupero partita), l'admin può sempre farlo
+    // Altrimenti verifica che l'utente sia uno dei giocatori della partita
+    if (scoreA === undefined && scoreB === undefined) {
+      // Aggiornamento dettagli partita - solo i giocatori possono farlo
+      const isPlayer = await isPlayerInMatch(db, match, userEmail);
+      if (!isPlayer) {
+        return NextResponse.json({ error: "Non sei autorizzato a modificare questa partita. Verifica di essere uno dei giocatori della partita e che il tuo account sia collegato al tuo profilo giocatore." }, { status: 403 });
+      }
     }
+    // Per l'inserimento risultati (recupero), l'admin è già stato verificato sopra
     
     // Verifica che la partita sia in uno stato modificabile
     if (match.status === "completed" && !status) {
