@@ -23,15 +23,26 @@ export default function Page() {
     setErr('');
     try {
       const url = forceRefresh ? '/api/classifica?refresh=true' : '/api/classifica';
+      console.log('🔍 Caricando classifica da:', url);
+      
       const response = await fetch(url);
+      console.log('📡 Response status:', response.status, response.statusText);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const data = await response.json();
+      console.log('📊 Dati ricevuti:', data);
       
       if (data.error) {
         throw new Error(data.error);
       }
       
+      console.log('✅ Impostando rows:', data.rows?.length || 0, 'elementi');
       setRows(data.rows || []);
     } catch (e: any) {
+      console.error('❌ Errore nel caricamento:', e);
       setErr(e?.message || 'Errore nel caricamento della classifica');
     } finally {
       setLoading(false);
@@ -43,6 +54,9 @@ export default function Page() {
   }, []);
 
   const hasData = rows.length > 0;
+  
+  // Debug: log dello stato
+  console.log('🎯 Stato componente:', { loading, err, hasData, rowsCount: rows.length });
 
   return (
     <main className="mx-auto max-w-6xl p-6">

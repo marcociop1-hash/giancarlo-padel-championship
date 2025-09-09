@@ -230,25 +230,16 @@ export async function GET(req: Request) {
       });
     });
     
-    // Filtra le partite per escludere quelle future
+    // Ordina le partite per data e poi per ID per consistenza
     let validMatches = matches;
-    console.log('Applicando filtro per escludere partite future...');
-    validMatches = matches
-      .filter(match => {
-        // Escludi partite con date future (come 2025-09-04)
-        if (match.date && match.date > '2025-08-31') {
-          console.log(`Escludendo partita futura: ${match.id} con data ${match.date}`);
-          return false;
-        }
-        return true;
-      })
-      .sort((a, b) => {
-        // Ordina per data e poi per ID per consistenza
-        if (a.date && b.date) {
-          return a.date.localeCompare(b.date);
-        }
-        return (a.id || '').localeCompare(b.id || '');
-      });
+    console.log('Ordinando partite per data...');
+    validMatches = matches.sort((a, b) => {
+      // Ordina per data e poi per ID per consistenza
+      if (a.date && b.date) {
+        return a.date.localeCompare(b.date);
+      }
+      return (a.id || '').localeCompare(b.id || '');
+    });
     
     console.log(`Dopo il filtro: ${validMatches.length} partite valide`);
     
