@@ -21,22 +21,47 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Matchday number is required' }, { status: 400 });
     }
 
-    // Verifica se la giornata può essere congelata
     const db = adminDb();
-    const matchesRef = db.collection('matches');
-    const matchesSnapshot = await matchesRef
-      .where('matchday', '==', matchday)
+    
+    // Cerca tutte le partite del campionato
+    const allMatchesSnapshot = await db.collection('matches')
       .where('phase', '==', 'campionato')
       .get();
 
-    if (matchesSnapshot.empty) {
-      return NextResponse.json({ error: 'No matches found for this matchday' }, { status: 404 });
+    if (allMatchesSnapshot.empty) {
+      return NextResponse.json({ error: 'No championship matches found' }, { status: 404 });
     }
 
-    const matches = matchesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const allMatches = allMatchesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
+    // Se non ci sono partite con matchday specifico, assegna il matchday alle partite senza matchday
+    let targetMatches = allMatches.filter((m: any) => m.matchday === matchday);
+    
+    if (targetMatches.length === 0) {
+      const matchesWithoutMatchday = allMatches.filter((m: any) => !m.matchday || m.matchday === null || m.matchday === undefined);
+      
+      if (matchesWithoutMatchday.length === 0) {
+        const availableMatchdays = [...new Set(allMatches.map((m: any) => m.matchday).filter(Boolean))];
+        return NextResponse.json({ 
+          error: `No matches found for matchday ${matchday}. Available matchdays: ${availableMatchdays.join(', ')}` 
+        }, { status: 404 });
+      }
+      
+      // Assegna il matchday alle partite che non ce l'hanno
+      console.log(`Found ${matchesWithoutMatchday.length} matches without matchday, assigning matchday ${matchday}...`);
+      const updateBatch = db.batch();
+      matchesWithoutMatchday.forEach((match: any) => {
+        const matchRef = db.collection('matches').doc(match.id);
+        updateBatch.update(matchRef, { matchday: matchday });
+      });
+      await updateBatch.commit();
+      
+      // Aggiorna targetMatches con le partite appena modificate
+      targetMatches = matchesWithoutMatchday.map(m => ({ ...m, matchday }));
+    }
 
     // Verifica se la giornata ha già partite da recuperare
-    const hasRecoveries = matches.some((m: any) => m.status === 'da recuperare');
+    const hasRecoveries = targetMatches.some((m: any) => m.status === 'da recuperare');
     
     if (hasRecoveries) {
       return NextResponse.json({ 
@@ -44,18 +69,18 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    if (!shouldFreezeMatchday(matches, matchday)) {
+    // Aggiorna tutte le partite incomplete della giornata a "da recuperare"
+    const batch = db.batch();
+    const incompleteMatches = targetMatches.filter((m: any) => m.status !== 'completata');
+
+    if (incompleteMatches.length === 0) {
       return NextResponse.json({ 
         error: 'Matchday cannot be frozen - all matches are completed' 
       }, { status: 400 });
     }
 
-    // Aggiorna tutte le partite incomplete della giornata a "da recuperare"
-    const batch = db.batch();
-    const incompleteMatches = matches.filter((m: any) => m.status !== 'completata');
-
     incompleteMatches.forEach((match: any) => {
-      const matchRef = matchesRef.doc(match.id);
+      const matchRef = db.collection('matches').doc(match.id);
       batch.update(matchRef, {
         status: 'da recuperare',
         frozenAt: new Date(),
@@ -63,28 +88,13 @@ export async function POST(request: NextRequest) {
       });
     });
 
-    // Aggiorna lo stato del torneo
-    const tournamentRef = db.collection('tournament').doc('state');
-    batch.update(tournamentRef, {
-      isFrozen: true,
-      frozenMatchday: matchday,
-      lastUpdated: new Date()
-    });
-
     await batch.commit();
-
-    // Invalida la cache della classifica
-    try {
-      await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/classifica?refresh=true`);
-    } catch (e) {
-      console.log('Cache invalidation failed:', e);
-    }
 
     return NextResponse.json({
       success: true,
       message: `Matchday ${matchday} frozen successfully`,
       frozenMatches: incompleteMatches.length,
-      totalMatches: matches.length
+      totalMatches: targetMatches.length
     });
 
   } catch (error) {

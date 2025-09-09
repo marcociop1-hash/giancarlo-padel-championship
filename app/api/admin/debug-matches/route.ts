@@ -36,6 +36,7 @@ export async function GET() {
       console.log(`ID: ${match.id}`);
       console.log(`Phase: ${match.phase || 'NON SPECIFICATO'}`);
       console.log(`Status: ${match.status || 'NON SPECIFICATO'}`);
+      console.log(`Matchday: ${match.matchday || 'NON SPECIFICATO'}`);
       console.log(`Date: ${match.date || 'NON SPECIFICATO'}`);
       console.log(`Time: ${match.time || 'NON SPECIFICATO'}`);
       console.log(`Score: ${match.scoreA || 0} - ${match.scoreB || 0}`);
