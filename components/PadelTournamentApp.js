@@ -926,7 +926,7 @@ export default function PadelTournamentApp() {
                     </div>
                     <div className="bg-blue-50 rounded-lg p-3 text-center">
                       <div className="text-lg font-bold text-blue-700">
-                        {recoveryMatches.filter(m => m.originalMatchday).length}
+                        {new Set(recoveryMatches.map(m => m.matchday).filter(Boolean)).size}
                       </div>
                       <div className="text-xs text-blue-600">Giornate Coinvolte</div>
                     </div>
