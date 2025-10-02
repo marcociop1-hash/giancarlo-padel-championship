@@ -75,7 +75,7 @@ interface MatchCandidate {
 }
 
 /**
- * Calcola il peso di una partita basato sulle priorità
+ * Calcola il peso di una partita basato sulle priorità - VERSIONE MIGLIORATA
  */
 function calculateMatchWeight(
   teamA: LightPlayer[],
@@ -86,12 +86,13 @@ function calculateMatchWeight(
 ): number {
   let weight = 0;
   
-  // PRIORITÀ 1: Compagni ripetuti (PENALITÀ MASSIMA)
+  // PRIORITÀ 1: Compagni ripetuti (PENALITÀ MASSIMA - INACCETTABILE)
   const pairKeyA = pairKey(teamA[0].id || "", teamA[1].id || "");
   const pairKeyB = pairKey(teamB[0].id || "", teamB[1].id || "");
   
   if (teammatePairs.has(pairKeyA) || teammatePairs.has(pairKeyB)) {
-    weight += 1000; // PENALITÀ MASSIMA
+    weight += 10000; // PENALITÀ MASSIMA - RENDE LA PARTITA INACCETTABILE
+    return weight; // Ritorna subito, non valuta altro
   }
   
   // PRIORITÀ 2: Differenza punteggi tra squadre (moltiplicata per 100)
@@ -100,14 +101,25 @@ function calculateMatchWeight(
   const scoreDifference = Math.abs(scoreA - scoreB);
   weight += scoreDifference * 100;
   
-  // PRIORITÀ 3: Avversari ripetuti (penalità bassa)
+  // PRIORITÀ 3: Avversari ripetuti (penalità progressiva)
+  let opponentRepeatCount = 0;
   for (const playerA of teamA) {
     for (const playerB of teamB) {
       const opponentKey = pairKey(playerA.id || "", playerB.id || "");
       if (opponentPairs.has(opponentKey)) {
-        weight += 10; // PENALITÀ BASSA
+        opponentRepeatCount++;
       }
     }
+  }
+  
+  // Penalità progressiva per avversari ripetuti
+  if (opponentRepeatCount > 0) {
+    weight += opponentRepeatCount * 50; // 50 per ogni coppia di avversari ripetuti
+  }
+  
+  // BONUS: Punteggi molto simili (differenza 0-1)
+  if (scoreDifference <= 1) {
+    weight -= 20; // Bonus per partite bilanciate
   }
   
   return weight;
@@ -166,7 +178,26 @@ function generateBestMatch(
 }
 
 /**
- * Algoritmo principale per generare accoppiamenti intelligenti
+ * Genera tutte le possibili combinazioni di 4 giocatori
+ */
+function generateAllCombinations(players: LightPlayer[]): LightPlayer[][] {
+  const combinations: LightPlayer[][] = [];
+  
+  for (let i = 0; i < players.length - 3; i++) {
+    for (let j = i + 1; j < players.length - 2; j++) {
+      for (let k = j + 1; k < players.length - 1; k++) {
+        for (let l = k + 1; l < players.length; l++) {
+          combinations.push([players[i], players[j], players[k], players[l]]);
+        }
+      }
+    }
+  }
+  
+  return combinations;
+}
+
+/**
+ * Algoritmo principale per generare accoppiamenti intelligenti - VERSIONE MIGLIORATA
  */
 function generateIntelligentPairings(
   players: LightPlayer[],
@@ -185,49 +216,52 @@ function generateIntelligentPairings(
   
   // Genera partite finché abbiamo abbastanza giocatori
   while (usedPlayers.size < players.length - 3) {
-    // Trova 4 giocatori non ancora usati
+    // Trova giocatori non ancora usati
     const availablePlayers = sortedPlayers.filter(p => !usedPlayers.has(p.id || ""));
     
     if (availablePlayers.length < 4) break;
     
-    // Prova diverse combinazioni di 4 giocatori per trovare la migliore
+    // Genera TUTTE le possibili combinazioni di 4 giocatori disponibili
+    const allCombinations = generateAllCombinations(availablePlayers);
+    
+    // Valuta ogni combinazione e trova la migliore
     let bestMatch: MatchCandidate | null = null;
     let bestPlayers: LightPlayer[] = [];
+    let bestScore = Infinity;
     
-    // Prova con i primi 4 giocatori disponibili
-    const firstFour = availablePlayers.slice(0, 4);
-    const match1 = generateBestMatch(firstFour, teammatePairs, opponentPairs, playerScores);
-    
-    if (match1 && match1.weight < 1000) { // Solo se non ci sono compagni ripetuti
-      bestMatch = match1;
-      bestPlayers = firstFour;
-    }
-    
-    // Se abbiamo più di 4 giocatori, prova anche con i prossimi 4
-    if (availablePlayers.length >= 8) {
-      const nextFour = availablePlayers.slice(4, 8);
-      const match2 = generateBestMatch(nextFour, teammatePairs, opponentPairs, playerScores);
+    for (const combination of allCombinations) {
+      const match = generateBestMatch(combination, teammatePairs, opponentPairs, playerScores);
       
-      if (match2 && match2.weight < 1000 && (!bestMatch || match2.weight < bestMatch.weight)) {
-        bestMatch = match2;
-        bestPlayers = nextFour;
+      if (match) {
+        // Calcola un punteggio composito che considera:
+        // 1. Peso della partita (compagni ripetuti, punteggi, avversari)
+        // 2. Numero di partite giocate dai giocatori (bilanciamento)
+        const playerBalance = combination.reduce((sum, p) => {
+          return sum + (playedCount.get(p.id || "") || 0);
+        }, 0);
+        
+        // Punteggio finale: peso della partita + bilanciamento giocatori
+        const totalScore = match.weight + (playerBalance * 0.1);
+        
+        if (totalScore < bestScore) {
+          bestScore = totalScore;
+          bestMatch = match;
+          bestPlayers = combination;
+        }
       }
     }
     
-    // Se non troviamo una combinazione senza compagni ripetuti, usa la migliore disponibile
+    // Se non troviamo nessuna combinazione valida, fermiamoci
     if (!bestMatch) {
-      const fallbackMatch = generateBestMatch(firstFour, teammatePairs, opponentPairs, playerScores);
-      if (fallbackMatch) {
-        bestMatch = fallbackMatch;
-        bestPlayers = firstFour;
-      }
+      console.log("Nessuna combinazione valida trovata, fermando la generazione");
+      break;
     }
-    
-    if (!bestMatch) break;
     
     // Aggiungi la partita e marca i giocatori come usati
     matches.push(bestMatch);
     bestPlayers.forEach(p => usedPlayers.add(p.id || ""));
+    
+    console.log(`Partita ${matches.length}: ${bestPlayers.map(p => p.name).join(', ')} - Peso: ${bestMatch.weight}, Score: ${bestScore.toFixed(2)}`);
   }
   
   return matches;
