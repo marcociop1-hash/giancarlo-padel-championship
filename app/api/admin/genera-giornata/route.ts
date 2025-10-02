@@ -87,7 +87,7 @@ function calculateMatchWeight(
 ): number {
   let weight = 0;
   
-  // PRIORITÀ 1: Compagni ripetuti (PENALITÀ MASSIMA MA NON IMPOSSIBILE)
+  // PRIORITÀ 1: Compagni ripetuti (IMPOSSIBILE quando possibile, PENALITÀ MASSIMA altrimenti)
   const pairKeyA = pairKey(teamA[0].id || "", teamA[1].id || "");
   const pairKeyB = pairKey(teamB[0].id || "", teamB[1].id || "");
   
@@ -96,7 +96,13 @@ function calculateMatchWeight(
   if (teammatePairs.has(pairKeyB)) repeatedTeammates++;
   
   if (repeatedTeammates > 0) {
-    weight += 10000 * repeatedTeammates; // PENALITÀ MASSIMA ma non impossibile
+    // Controlla se abbiamo alternative disponibili
+    const totalMatchesPlayed = teammatePairs.size / 2; // Approssimativo
+    if (totalMatchesPlayed < 60) { // Prime 15 giornate, cerca di evitare ripetizioni
+      return Infinity; // IMPOSSIBILE - cerca alternative
+    } else {
+      weight += 10000 * repeatedTeammates; // PENALITÀ MASSIMA ma accettabile
+    }
   }
   
   // PRIORITÀ 2: Differenza punteggi tra squadre (moltiplicata per 100)
@@ -171,6 +177,12 @@ function generateBestMatch(
       playerGames
     );
     
+    // Salta completamente i candidati impossibili (weight = Infinity)
+    if (weight === Infinity) {
+      console.log(`❌ Combinazione IMPOSSIBILE saltata: ${combo.teamA.map(p => p.name).join(',')} vs ${combo.teamB.map(p => p.name).join(',')}`);
+      continue;
+    }
+    
     // Log delle combinazioni con compagni ripetuti per debug
     if (weight >= 10000) {
       console.log(`⚠️ Combinazione con compagni ripetuti (peso: ${weight}): ${combo.teamA.map(p => p.name).join(',')} vs ${combo.teamB.map(p => p.name).join(',')}`);
@@ -213,6 +225,99 @@ function generateAllCombinations(players: LightPlayer[]): LightPlayer[][] {
   }
   
   return combinations;
+}
+
+/**
+ * Genera un piano completo di accoppiamenti per tutte le giornate
+ * Usa un algoritmo globale per distribuire le 120 coppie in 15 giornate
+ */
+function generateGlobalPairingPlan(players: LightPlayer[]): MatchCandidate[][] {
+  const allDays: MatchCandidate[][] = [];
+  const usedPairs = new Set<string>();
+  const playerIds = players.map(p => p.id || "");
+  
+  // Genera tutte le possibili coppie
+  const allPairs: string[][] = [];
+  for (let i = 0; i < playerIds.length; i++) {
+    for (let j = i + 1; j < playerIds.length; j++) {
+      allPairs.push([playerIds[i], playerIds[j]]);
+    }
+  }
+  
+  console.log(`🎯 Generando piano globale: ${allPairs.length} coppie per ${players.length} giocatori`);
+  
+  // Per ogni giornata, cerca di creare 4 partite senza ripetere coppie
+  for (let day = 0; day < 15; day++) {
+    const dayMatches: MatchCandidate[] = [];
+    const usedToday = new Set<string>();
+    
+    // Cerca di creare 4 partite per questa giornata
+    for (let match = 0; match < 4; match++) {
+      let bestMatch: MatchCandidate | null = null;
+      let bestScore = Infinity;
+      
+      // Prova diverse combinazioni di 4 giocatori non ancora usati oggi
+      const availablePlayers = playerIds.filter(id => !usedToday.has(id));
+      
+      if (availablePlayers.length < 4) break;
+      
+      // Genera combinazioni di 4 giocatori
+      const combinations = generateAllCombinations(
+        availablePlayers.map(id => players.find(p => p.id === id)!).slice(0, Math.min(availablePlayers.length, 8))
+      );
+      
+      for (const combination of combinations) {
+        // Verifica che le coppie non siano già state usate
+        const pair1 = pairKey(combination[0].id || "", combination[1].id || "");
+        const pair2 = pairKey(combination[2].id || "", combination[3].id || "");
+        
+        if (usedPairs.has(pair1) || usedPairs.has(pair2)) {
+          continue; // Salta se le coppie sono già state usate
+        }
+        
+        // Crea la partita
+        const matchCandidate: MatchCandidate = {
+          teamA: [combination[0], combination[1]],
+          teamB: [combination[2], combination[3]],
+          weight: 0, // Peso 0 per coppie mai usate
+          scoreA: 0,
+          scoreB: 0
+        };
+        
+        bestMatch = matchCandidate;
+        break; // Prendi la prima combinazione valida
+      }
+      
+      if (bestMatch) {
+        dayMatches.push(bestMatch);
+        
+        // Marca le coppie come usate
+        const pair1 = pairKey(bestMatch.teamA[0].id || "", bestMatch.teamA[1].id || "");
+        const pair2 = pairKey(bestMatch.teamB[0].id || "", bestMatch.teamB[1].id || "");
+        usedPairs.add(pair1);
+        usedPairs.add(pair2);
+        
+        // Marca i giocatori come usati oggi
+        bestMatch.teamA.forEach(p => usedToday.add(p.id || ""));
+        bestMatch.teamB.forEach(p => usedToday.add(p.id || ""));
+        
+        console.log(`Giornata ${day + 1}, Partita ${match + 1}: ${bestMatch.teamA.map(p => p.name).join(',')} vs ${bestMatch.teamB.map(p => p.name).join(',')}`);
+      } else {
+        console.log(`⚠️ Giornata ${day + 1}: Impossibile creare partita ${match + 1} senza ripetere coppie`);
+        break;
+      }
+    }
+    
+    if (dayMatches.length > 0) {
+      allDays.push(dayMatches);
+    } else {
+      console.log(`❌ Giornata ${day + 1}: Nessuna partita possibile`);
+      break;
+    }
+  }
+  
+  console.log(`✅ Piano globale completato: ${allDays.length} giornate, ${usedPairs.size} coppie utilizzate`);
+  return allDays;
 }
 
 /**
@@ -468,15 +573,36 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
     });
   }
 
-  // NUOVO ALGORITMO: Genera accoppiamenti intelligenti
-  const intelligentMatches = generateIntelligentPairings(
-    players,
-    teammatePairs,
-    opponentPairs,
-    playerScores,
-    playedCount,
-    playerGames
-  );
+  // NUOVO ALGORITMO: Prova prima il piano globale, poi fallback intelligente
+  let intelligentMatches: MatchCandidate[] = [];
+  
+  // Se è la prima giornata o abbiamo poche partite giocate, prova il piano globale
+  const totalMatchesPlayed = completedMatches.length;
+  if (totalMatchesPlayed < 8) { // Prova piano globale per le prime 2 giornate
+    console.log("🎯 Tentativo piano globale per evitare ripetizioni future");
+    const globalPlan = generateGlobalPairingPlan(players);
+    
+    if (globalPlan.length > 0) {
+      const currentDayIndex = Math.floor(totalMatchesPlayed / 4);
+      if (currentDayIndex < globalPlan.length) {
+        intelligentMatches = globalPlan[currentDayIndex];
+        console.log(`✅ Usando piano globale per giornata ${currentDayIndex + 1}`);
+      }
+    }
+  }
+  
+  // Se il piano globale non ha funzionato, usa l'algoritmo intelligente
+  if (intelligentMatches.length === 0) {
+    console.log("🔄 Piano globale non disponibile, usando algoritmo intelligente");
+    intelligentMatches = generateIntelligentPairings(
+      players,
+      teammatePairs,
+      opponentPairs,
+      playerScores,
+      playedCount,
+      playerGames
+    );
+  }
 
   if (intelligentMatches.length === 0) {
     return { created: 0, reason: "no-possible-matches" as const };
