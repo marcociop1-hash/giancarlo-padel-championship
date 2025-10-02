@@ -87,12 +87,16 @@ function calculateMatchWeight(
 ): number {
   let weight = 0;
   
-  // PRIORITÀ 1: Compagni ripetuti (COMPLETAMENTE IMPOSSIBILE)
+  // PRIORITÀ 1: Compagni ripetuti (PENALITÀ MASSIMA MA NON IMPOSSIBILE)
   const pairKeyA = pairKey(teamA[0].id || "", teamA[1].id || "");
   const pairKeyB = pairKey(teamB[0].id || "", teamB[1].id || "");
   
-  if (teammatePairs.has(pairKeyA) || teammatePairs.has(pairKeyB)) {
-    return Infinity; // IMPOSSIBILE - La partita non può essere accettata in nessun caso
+  let repeatedTeammates = 0;
+  if (teammatePairs.has(pairKeyA)) repeatedTeammates++;
+  if (teammatePairs.has(pairKeyB)) repeatedTeammates++;
+  
+  if (repeatedTeammates > 0) {
+    weight += 10000 * repeatedTeammates; // PENALITÀ MASSIMA ma non impossibile
   }
   
   // PRIORITÀ 2: Differenza punteggi tra squadre (moltiplicata per 100)
@@ -167,10 +171,9 @@ function generateBestMatch(
       playerGames
     );
     
-    // Salta completamente i candidati impossibili (weight = Infinity)
-    if (weight === Infinity) {
-      console.log(`❌ Combinazione IMPOSSIBILE saltata: ${combo.teamA.map(p => p.name).join(',')} vs ${combo.teamB.map(p => p.name).join(',')}`);
-      continue;
+    // Log delle combinazioni con compagni ripetuti per debug
+    if (weight >= 10000) {
+      console.log(`⚠️ Combinazione con compagni ripetuti (peso: ${weight}): ${combo.teamA.map(p => p.name).join(',')} vs ${combo.teamB.map(p => p.name).join(',')}`);
     }
     
     const scoreA = (playerScores.get(combo.teamA[0].id || "") || 0) + 
@@ -273,11 +276,19 @@ function generateIntelligentPairings(
       }
     }
     
-    // Se non troviamo nessuna combinazione valida, fermiamoci
+    // Se non troviamo nessuna combinazione, usa i primi 4 giocatori disponibili
     if (!bestMatch) {
-      console.log(`❌ Nessuna combinazione valida trovata per la partita ${matchIndex + 1} con giocatori: ${availablePlayers.map(p => p.name).join(', ')}`);
-      console.log("🛑 Fermando la generazione per evitare accoppiamenti ripetuti");
-      break;
+      console.log(`⚠️ Nessuna combinazione trovata per la partita ${matchIndex + 1}, usando i primi 4 giocatori disponibili`);
+      
+      const fallbackMatch = generateBestMatch(availablePlayers.slice(0, 4), teammatePairs, opponentPairs, playerScores, playerGames);
+      if (fallbackMatch) {
+        bestMatch = fallbackMatch;
+        bestPlayers = availablePlayers.slice(0, 4);
+        console.log(`🔄 Usando combinazione di fallback: ${bestPlayers.map(p => p.name).join(', ')} - Peso: ${bestMatch.weight}`);
+      } else {
+        console.log(`❌ Impossibile generare una partita per la partita ${matchIndex + 1}`);
+        break;
+      }
     }
     
     // Aggiungi la partita e marca i giocatori come usati
