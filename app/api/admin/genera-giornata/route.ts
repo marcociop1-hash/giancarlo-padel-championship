@@ -231,12 +231,17 @@ function generateIntelligentPairings(
     .map(p => ({ ...p, matchesPlayed: playedCount.get(p.id || "") || 0 }))
     .sort((a, b) => a.matchesPlayed - b.matchesPlayed);
   
-  // Genera partite finché abbiamo abbastanza giocatori
-  while (usedPlayers.size < players.length - 3) {
+  // Genera esattamente 4 partite per giornata (16 giocatori ÷ 4 = 4 partite)
+  const maxMatchesPerDay = Math.floor(players.length / 4); // 4 partite per 16 giocatori
+  
+  for (let matchIndex = 0; matchIndex < maxMatchesPerDay; matchIndex++) {
     // Trova giocatori non ancora usati
     const availablePlayers = sortedPlayers.filter(p => !usedPlayers.has(p.id || ""));
     
-    if (availablePlayers.length < 4) break;
+    if (availablePlayers.length < 4) {
+      console.log(`❌ Non abbastanza giocatori disponibili per la partita ${matchIndex + 1}: ${availablePlayers.length} disponibili, 4 necessari`);
+      break;
+    }
     
     // Genera TUTTE le possibili combinazioni di 4 giocatori disponibili
     const allCombinations = generateAllCombinations(availablePlayers);
@@ -270,7 +275,7 @@ function generateIntelligentPairings(
     
     // Se non troviamo nessuna combinazione valida, fermiamoci
     if (!bestMatch) {
-      console.log(`❌ Nessuna combinazione valida trovata per i giocatori: ${availablePlayers.map(p => p.name).join(', ')}`);
+      console.log(`❌ Nessuna combinazione valida trovata per la partita ${matchIndex + 1} con giocatori: ${availablePlayers.map(p => p.name).join(', ')}`);
       console.log("🛑 Fermando la generazione per evitare accoppiamenti ripetuti");
       break;
     }
@@ -281,6 +286,18 @@ function generateIntelligentPairings(
     
     console.log(`Partita ${matches.length}: ${bestPlayers.map(p => p.name).join(', ')} - Peso: ${bestMatch.weight}, Score: ${bestScore.toFixed(2)}`);
   }
+  
+  // CONTROLLO FINALE: Verifica che tutti i giocatori siano stati usati esattamente una volta
+  const unusedPlayers = players.filter(p => !usedPlayers.has(p.id || ""));
+  if (unusedPlayers.length > 0) {
+    console.log(`⚠️ ATTENZIONE: ${unusedPlayers.length} giocatori non sono stati assegnati: ${unusedPlayers.map(p => p.name).join(', ')}`);
+  }
+  
+  if (matches.length !== maxMatchesPerDay) {
+    console.log(`⚠️ ATTENZIONE: Generate ${matches.length} partite invece di ${maxMatchesPerDay} per ${players.length} giocatori`);
+  }
+  
+  console.log(`✅ Giornata completata: ${matches.length} partite, ${usedPlayers.size}/${players.length} giocatori utilizzati`);
   
   return matches;
 }
