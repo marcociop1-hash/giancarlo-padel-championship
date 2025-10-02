@@ -30,15 +30,15 @@ function normalizeTeam(team) {
   return { a: { id: null, name: "??" }, b: { id: null, name: "??" } };
 }
 
-function teamLabel(team, players = []) {
+function teamLabel(team, players = [], standings = []) {
   const t = normalizeTeam(team);
   
-  // Trova i giocatori e i loro punteggi
-  const playerA = players.find(p => p.id === t.a.id);
-  const playerB = players.find(p => p.id === t.b.id);
+  // Trova i giocatori e i loro punteggi dalla classifica
+  const standingA = standings.find(s => s.playerId === t.a.id);
+  const standingB = standings.find(s => s.playerId === t.b.id);
   
-  const scoreA = playerA?.punti || 0;
-  const scoreB = playerB?.punti || 0;
+  const scoreA = standingA?.points || 0;
+  const scoreB = standingB?.points || 0;
   const totalScore = scoreA + scoreB;
   
   return `${t.a.name}(${scoreA}) & ${t.b.name}(${scoreB}) [${totalScore}]`;
@@ -67,6 +67,7 @@ function getStatusIcon(status) {
 export default function LogPage() {
   const [matches, setMatches] = useState([]);
   const [players, setPlayers] = useState([]);
+  const [standings, setStandings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -92,14 +93,26 @@ export default function LogPage() {
     }
   }, []);
 
+  const fetchStandings = useCallback(async () => {
+    try {
+      const response = await fetch('/api/classifica');
+      if (response.ok) {
+        const data = await response.json();
+        setStandings(data.rows || []);
+      }
+    } catch (e) {
+      console.error("Errore caricamento classifica:", e);
+    }
+  }, []);
+
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchMatches(), fetchPlayers()]);
+      await Promise.all([fetchMatches(), fetchPlayers(), fetchStandings()]);
       setLoading(false);
     };
     loadData();
-  }, [fetchMatches, fetchPlayers]);
+  }, [fetchMatches, fetchPlayers, fetchStandings]);
 
   // Raggruppa le partite per giornata
   const matchesByMatchday = useMemo(() => {
@@ -154,7 +167,7 @@ export default function LogPage() {
             matchday: parseInt(matchday),
             partner: teamA.b.name,
             partnerId: teamA.b.id,
-            opponent: teamLabel(match.teamB, players),
+            opponent: teamLabel(match.teamB, players, standings),
             status: match.status,
             matchId: match.id
           });
@@ -163,7 +176,7 @@ export default function LogPage() {
             matchday: parseInt(matchday),
             partner: teamA.a.name,
             partnerId: teamA.a.id,
-            opponent: teamLabel(match.teamB, players),
+            opponent: teamLabel(match.teamB, players, standings),
             status: match.status,
             matchId: match.id
           });
@@ -178,7 +191,7 @@ export default function LogPage() {
             matchday: parseInt(matchday),
             partner: teamB.b.name,
             partnerId: teamB.b.id,
-            opponent: teamLabel(match.teamA, players),
+            opponent: teamLabel(match.teamA, players, standings),
             status: match.status,
             matchId: match.id
           });
@@ -187,7 +200,7 @@ export default function LogPage() {
             matchday: parseInt(matchday),
             partner: teamB.a.name,
             partnerId: teamB.a.id,
-            opponent: teamLabel(match.teamA, players),
+            opponent: teamLabel(match.teamA, players, standings),
             status: match.status,
             matchId: match.id
           });
@@ -359,7 +372,7 @@ export default function LogPage() {
                   <div key={match.id} className="border rounded-lg p-3 bg-gray-50">
                     <div className="flex items-center justify-between mb-2">
                       <div className="font-medium text-sm">
-                        {teamLabel(match.teamA, players)} vs {teamLabel(match.teamB, players)}
+                        {teamLabel(match.teamA, players, standings)} vs {teamLabel(match.teamB, players, standings)}
                       </div>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(match.status)}`}>
                         {getStatusIcon(match.status)} {match.status}
@@ -368,13 +381,13 @@ export default function LogPage() {
                     {(() => {
                       const teamA = normalizeTeam(match.teamA);
                       const teamB = normalizeTeam(match.teamB);
-                      const playerA1 = players.find(p => p.id === teamA.a.id);
-                      const playerA2 = players.find(p => p.id === teamA.b.id);
-                      const playerB1 = players.find(p => p.id === teamB.a.id);
-                      const playerB2 = players.find(p => p.id === teamB.b.id);
+                      const standingA1 = standings.find(s => s.playerId === teamA.a.id);
+                      const standingA2 = standings.find(s => s.playerId === teamA.b.id);
+                      const standingB1 = standings.find(s => s.playerId === teamB.a.id);
+                      const standingB2 = standings.find(s => s.playerId === teamB.b.id);
                       
-                      const scoreA = (playerA1?.punti || 0) + (playerA2?.punti || 0);
-                      const scoreB = (playerB1?.punti || 0) + (playerB2?.punti || 0);
+                      const scoreA = (standingA1?.points || 0) + (standingA2?.points || 0);
+                      const scoreB = (standingB1?.points || 0) + (standingB2?.points || 0);
                       const diff = Math.abs(scoreA - scoreB);
                       
                       return (
