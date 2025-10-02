@@ -30,9 +30,18 @@ function normalizeTeam(team) {
   return { a: { id: null, name: "??" }, b: { id: null, name: "??" } };
 }
 
-function teamLabel(team) {
+function teamLabel(team, players = []) {
   const t = normalizeTeam(team);
-  return `${t.a.name} & ${t.b.name}`;
+  
+  // Trova i giocatori e i loro punteggi
+  const playerA = players.find(p => p.id === t.a.id);
+  const playerB = players.find(p => p.id === t.b.id);
+  
+  const scoreA = playerA?.punti || 0;
+  const scoreB = playerB?.punti || 0;
+  const totalScore = scoreA + scoreB;
+  
+  return `${t.a.name}(${scoreA}) & ${t.b.name}(${scoreB}) [${totalScore}]`;
 }
 
 function getStatusColor(status) {
@@ -145,7 +154,7 @@ export default function LogPage() {
             matchday: parseInt(matchday),
             partner: teamA.b.name,
             partnerId: teamA.b.id,
-            opponent: teamLabel(match.teamB),
+            opponent: teamLabel(match.teamB, players),
             status: match.status,
             matchId: match.id
           });
@@ -154,7 +163,7 @@ export default function LogPage() {
             matchday: parseInt(matchday),
             partner: teamA.a.name,
             partnerId: teamA.a.id,
-            opponent: teamLabel(match.teamB),
+            opponent: teamLabel(match.teamB, players),
             status: match.status,
             matchId: match.id
           });
@@ -169,7 +178,7 @@ export default function LogPage() {
             matchday: parseInt(matchday),
             partner: teamB.b.name,
             partnerId: teamB.b.id,
-            opponent: teamLabel(match.teamA),
+            opponent: teamLabel(match.teamA, players),
             status: match.status,
             matchId: match.id
           });
@@ -178,7 +187,7 @@ export default function LogPage() {
             matchday: parseInt(matchday),
             partner: teamB.a.name,
             partnerId: teamB.a.id,
-            opponent: teamLabel(match.teamA),
+            opponent: teamLabel(match.teamA, players),
             status: match.status,
             matchId: match.id
           });
@@ -350,12 +359,30 @@ export default function LogPage() {
                   <div key={match.id} className="border rounded-lg p-3 bg-gray-50">
                     <div className="flex items-center justify-between mb-2">
                       <div className="font-medium text-sm">
-                        {teamLabel(match.teamA)} vs {teamLabel(match.teamB)}
+                        {teamLabel(match.teamA, players)} vs {teamLabel(match.teamB, players)}
                       </div>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(match.status)}`}>
                         {getStatusIcon(match.status)} {match.status}
                       </span>
                     </div>
+                    {(() => {
+                      const teamA = normalizeTeam(match.teamA);
+                      const teamB = normalizeTeam(match.teamB);
+                      const playerA1 = players.find(p => p.id === teamA.a.id);
+                      const playerA2 = players.find(p => p.id === teamA.b.id);
+                      const playerB1 = players.find(p => p.id === teamB.a.id);
+                      const playerB2 = players.find(p => p.id === teamB.b.id);
+                      
+                      const scoreA = (playerA1?.punti || 0) + (playerA2?.punti || 0);
+                      const scoreB = (playerB1?.punti || 0) + (playerB2?.punti || 0);
+                      const diff = Math.abs(scoreA - scoreB);
+                      
+                      return (
+                        <div className="text-xs text-gray-600">
+                          Differenza punteggi: {diff} {diff <= 1 ? '✅' : diff <= 3 ? '⚠️' : '❌'}
+                        </div>
+                      );
+                    })()}
                     
                     <div className="text-xs text-gray-600 space-y-1">
                       {match.phase && (
