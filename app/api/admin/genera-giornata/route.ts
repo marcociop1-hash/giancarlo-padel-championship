@@ -62,6 +62,7 @@ async function detectPhase(db: FirebaseFirestore.Firestore) {
 }
 
 /** =========================
+<<<<<<< HEAD
  *  NUOVO ALGORITMO MIGLIORATO - Generazione accoppiamenti intelligente
  *  Priorità: 1) Compagni diversi, 2) Punteggi simili, 3) Avversari diversi
  *  ========================= */
@@ -277,6 +278,55 @@ function generateIntelligentPairings(
   }
   
   return matches;
+=======
+ *  Scelta squadre senza ripetere compagni
+ *  ========================= */
+function chooseTeamsAvoidingRepeats(
+  players: LightPlayer[],
+  teammatePairs: Set<string>,
+  playerScores: Map<string, number>
+): { teamA: LightPlayer[]; teamB: LightPlayer[]; repeats: number; balance: number } | null {
+  // Ordina per punteggio attuale (più basso prima per bilanciamento)
+  const sortedByScore = players
+    .map((p) => ({ ...p, currentScore: playerScores.get(p.id || "") || 0 }))
+    .sort((a, b) => a.currentScore - b.currentScore);
+
+  const P = sortedByScore;
+
+  // Genera tutte le possibili combinazioni di squadre
+  const candidates = [
+    { A: [P[0], P[3]], B: [P[1], P[2]] }, // 1° + 4° vs 2° + 3°
+    { A: [P[0], P[2]], B: [P[1], P[3]] }, // 1° + 3° vs 2° + 4°
+    { A: [P[0], P[1]], B: [P[2], P[3]] }, // 1° + 2° vs 3° + 4°
+  ].map((c) => {
+    const k1 = pairKey(c.A[0].id || "", c.A[1].id || "");
+    const k2 = pairKey(c.B[0].id || "", c.B[1].id || "");
+    const repeats =
+      (teammatePairs.has(k1) ? 1 : 0) + (teammatePairs.has(k2) ? 1 : 0);
+    
+    // Calcola bilanciamento basato sui punteggi attuali
+    const sumA = (c.A[0].currentScore || 0) + (c.A[1].currentScore || 0);
+    const sumB = (c.B[0].currentScore || 0) + (c.B[1].currentScore || 0);
+    const balance = Math.abs(sumA - sumB);
+    
+    return { 
+      teamA: c.A.map(toLight), 
+      teamB: c.B.map(toLight), 
+      repeats, 
+      balance,
+      sumA,
+      sumB
+    };
+  });
+
+  // Ordina per priorità: 1) meno ripetizioni, 2) migliore bilanciamento
+  candidates.sort((x, y) => {
+    if (x.repeats !== y.repeats) return x.repeats - y.repeats;
+    return x.balance - y.balance;
+  });
+
+  return candidates[0] ?? null;
+>>>>>>> 306201e0856fab274e289508f745d6efcb6e0aab
 }
 
 /** =========================
@@ -345,7 +395,10 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
 
   const playedCount = new Map<string, number>();
   const teammatePairs = new Set<string>();
+<<<<<<< HEAD
   const opponentPairs = new Set<string>();
+=======
+>>>>>>> 306201e0856fab274e289508f745d6efcb6e0aab
   const existingQuartets = new Set<string>();
   for (const p of players) playedCount.set(p.id || "", 0);
 
@@ -355,6 +408,7 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
     const ids = [...a, ...b].map((x) => x.id || "").filter(Boolean);
     if (ids.length === 4) existingQuartets.add(sameQuartetKey(ids));
     for (const pid of ids) playedCount.set(pid, (playedCount.get(pid) || 0) + 1);
+<<<<<<< HEAD
     
     // Raccoglie coppie di compagni (stessa squadra)
     if (a.length === 2) teammatePairs.add(pairKey(a[0]?.id || "", a[1]?.id || ""));
@@ -368,6 +422,10 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
         }
       }
     }
+=======
+    if (a.length === 2) teammatePairs.add(pairKey(a[0]?.id || "", a[1]?.id || ""));
+    if (b.length === 2) teammatePairs.add(pairKey(b[0]?.id || "", b[1]?.id || ""));
+>>>>>>> 306201e0856fab274e289508f745d6efcb6e0aab
   }
 
   // Calcola quante partite possiamo creare
@@ -406,6 +464,7 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
     });
   }
 
+<<<<<<< HEAD
   // NUOVO ALGORITMO: Genera accoppiamenti intelligenti
   const intelligentMatches = generateIntelligentPairings(
     players,
@@ -424,6 +483,84 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
 
   // Crea le partite generate dall'algoritmo intelligente
   for (const match of intelligentMatches) {
+=======
+  // Ordina giocatori per numero di partite giocate (meno giocati prima)
+  // Se stesso numero di partite, ordina per punteggio (più basso prima per bilanciamento)
+  const sorted = players.slice().sort((p1, p2) => {
+    const played1 = playedCount.get(p1.id || "") || 0;
+    const played2 = playedCount.get(p2.id || "") || 0;
+    
+    if (played1 !== played2) return played1 - played2;
+    
+    // Se stesso numero di partite, bilancia per punteggio
+    const score1 = playerScores.get(p1.id || "") || 0;
+    const score2 = playerScores.get(p2.id || "") || 0;
+    return score1 - score2;
+  });
+
+  const batch = db.batch();
+  const createdMatches: any[] = [];
+  const usedPlayers = new Set<string>();
+
+  // Genera le partite per la giornata
+  for (let matchIndex = 0; matchIndex < maxMatchesPerDay; matchIndex++) {
+    // Trova 4 giocatori non ancora usati in questa giornata
+    const availablePlayers = sorted.filter(p => !usedPlayers.has(p.id || ""));
+    
+    if (availablePlayers.length < 4) break;
+
+    // Prendi i primi 4 giocatori disponibili
+    const chosen = availablePlayers.slice(0, 4);
+    const ids = chosen.map((x) => x.id || "");
+    
+    // Marca questi giocatori come usati per questa giornata
+    ids.forEach(id => usedPlayers.add(id));
+
+    // Per le giornate, permettiamo anche quartetti già usati se necessario
+    // (il controllo existingQuartets viene fatto solo se abbiamo abbastanza giocatori alternativi)
+    const quartetKey = sameQuartetKey(ids);
+    if (players.length > 8 && existingQuartets.has(quartetKey)) {
+      // Se abbiamo più di 8 giocatori, proviamo a trovare un quartetto alternativo
+      const alternativePlayers = availablePlayers.slice(4);
+      if (alternativePlayers.length >= 4) {
+        // Prova con i prossimi 4 giocatori
+        const altChosen = alternativePlayers.slice(0, 4);
+        const altIds = altChosen.map((x) => x.id || "").filter(Boolean);
+        const altQuartetKey = sameQuartetKey(altIds);
+        
+        if (!existingQuartets.has(altQuartetKey)) {
+          // Usa il quartetto alternativo
+          altIds.forEach(id => usedPlayers.add(id));
+          const altPick = chooseTeamsAvoidingRepeats(altChosen, teammatePairs, playerScores);
+          if (altPick) {
+            const matchDoc = {
+              phase: "campionato",
+              status: "scheduled",
+              createdAt: Timestamp.now(),
+              date: "",
+              time: "",
+              place: "",
+              teamA: altPick.teamA,
+              teamB: altPick.teamB,
+              matchday: nextMatchday,
+              giornata: Date.now(),
+            };
+            const matchRef = db.collection("matches").doc();
+            batch.set(matchRef, matchDoc);
+            createdMatches.push({ id: matchRef.id, ...matchDoc });
+            continue;
+          }
+        }
+      }
+      // Se non riusciamo a trovare un'alternativa, continuiamo con il quartetto originale
+    }
+
+    // Costruisci le squadre evitando coppie già viste
+    const pick = chooseTeamsAvoidingRepeats(chosen, teammatePairs, playerScores);
+    if (!pick) continue;
+
+    // Crea la partita
+>>>>>>> 306201e0856fab274e289508f745d6efcb6e0aab
     const matchDoc = {
       phase: "campionato",
       status: "scheduled",
@@ -431,8 +568,13 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
       date: "",
       time: "",
       place: "",
+<<<<<<< HEAD
       teamA: match.teamA,
       teamB: match.teamB,
+=======
+      teamA: pick.teamA,
+      teamB: pick.teamB,
+>>>>>>> 306201e0856fab274e289508f745d6efcb6e0aab
       matchday: nextMatchday,
       giornata: Date.now(), // Identificatore univoco per la giornata
     };
