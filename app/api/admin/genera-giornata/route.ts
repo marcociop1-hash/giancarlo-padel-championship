@@ -300,9 +300,9 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
   const matchesSnap = await db.collection("matches").where("phase", "==", "campionato").get();
   const matches = matchesSnap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
 
-  // Calcola il prossimo matchday: ogni 2 partite = 1 giornata
+  // Calcola il prossimo matchday: ogni 4 partite = 1 giornata (16 giocatori = 4 partite per giornata)
   const totalMatches = matches.length;
-  const nextMatchday = Math.floor(totalMatches / 2) + 1;
+  const nextMatchday = Math.floor(totalMatches / 4) + 1;
 
   // CONTROLLO 1: Verifica che tutte le partite precedenti abbiano punteggi
   const incompleteMatches = matches.filter(m => 
@@ -335,6 +335,18 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
     for (const pid of ids) {
       playerMatchCount.set(pid, (playerMatchCount.get(pid) || 0) + 1);
     }
+  }
+  
+  // CONTROLLO: Massimo 15 giornate per 16 giocatori (ogni giocatore deve giocare con tutti gli altri)
+  const maxMatchdays = players.length - 1; // 15 giornate per 16 giocatori
+  const currentMatchday = Math.floor(totalMatches / 4);
+  
+  if (currentMatchday >= maxMatchdays) {
+    return { 
+      created: 0, 
+      reason: "campionato-completato" as const,
+      message: `Campionato completato. Raggiunto il massimo di ${maxMatchdays} giornate per ${players.length} giocatori.`
+    };
   }
   
   // Ogni giocatore dovrebbe giocare con tutti gli altri (numero giocatori - 1)
@@ -467,6 +479,12 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
 
   if (createdMatches.length === 0) {
     return { created: 0, reason: "no-possible-matches" as const };
+  }
+
+  // CONTROLLO: Verifica che non vengano generate più di 4 partite per giornata
+  if (createdMatches.length > 4) {
+    console.error(`❌ ERRORE: Generate ${createdMatches.length} partite invece di 4 per giornata ${nextMatchday}`);
+    return { created: 0, reason: "too-many-matches" as const, message: `Errore: generate ${createdMatches.length} partite invece di 4` };
   }
 
   await batch.commit();
