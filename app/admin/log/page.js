@@ -281,7 +281,7 @@ export default function LogPage() {
   return (
     <main className="mx-auto max-w-7xl p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-emerald-900">📊 Log Torneo</h1>
+        <h1 className="text-3xl font-bold text-emerald-900">📊 Log Torneo v2</h1>
         <button
           onClick={() => {
             fetchMatches();
