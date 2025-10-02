@@ -82,17 +82,17 @@ function calculateMatchWeight(
   teamB: LightPlayer[],
   teammatePairs: Set<string>,
   opponentPairs: Set<string>,
-  playerScores: Map<string, number>
+  playerScores: Map<string, number>,
+  playerGames?: Map<string, { gamesWon: number; gamesLost: number }>
 ): number {
   let weight = 0;
   
-  // PRIORITÀ 1: Compagni ripetuti (PENALITÀ MASSIMA - INACCETTABILE)
+  // PRIORITÀ 1: Compagni ripetuti (COMPLETAMENTE IMPOSSIBILE)
   const pairKeyA = pairKey(teamA[0].id || "", teamA[1].id || "");
   const pairKeyB = pairKey(teamB[0].id || "", teamB[1].id || "");
   
   if (teammatePairs.has(pairKeyA) || teammatePairs.has(pairKeyB)) {
-    weight += 10000; // PENALITÀ MASSIMA - RENDE LA PARTITA INACCETTABILE
-    return weight; // Ritorna subito, non valuta altro
+    return Infinity; // IMPOSSIBILE - La partita non può essere accettata in nessun caso
   }
   
   // PRIORITÀ 2: Differenza punteggi tra squadre (moltiplicata per 100)
@@ -100,6 +100,14 @@ function calculateMatchWeight(
   const scoreB = (playerScores.get(teamB[0].id || "") || 0) + (playerScores.get(teamB[1].id || "") || 0);
   const scoreDifference = Math.abs(scoreA - scoreB);
   weight += scoreDifference * 100;
+  
+  // PRIORITÀ 2.5: Differenza game tra squadre (se disponibile)
+  if (playerGames) {
+    const gamesA = (playerGames.get(teamA[0].id || "")?.gamesWon || 0) + (playerGames.get(teamA[1].id || "")?.gamesWon || 0);
+    const gamesB = (playerGames.get(teamB[0].id || "")?.gamesWon || 0) + (playerGames.get(teamB[1].id || "")?.gamesWon || 0);
+    const gameDifference = Math.abs(gamesA - gamesB);
+    weight += gameDifference * 2; // Peso minore rispetto ai punteggi
+  }
   
   // PRIORITÀ 3: Avversari ripetuti (penalità progressiva)
   let opponentRepeatCount = 0;
@@ -132,12 +140,13 @@ function generateBestMatch(
   players: LightPlayer[],
   teammatePairs: Set<string>,
   opponentPairs: Set<string>,
-  playerScores: Map<string, number>
+  playerScores: Map<string, number>,
+  playerGames?: Map<string, { gamesWon: number; gamesLost: number }>
 ): MatchCandidate | null {
   if (players.length !== 4) return null;
   
   const candidates: MatchCandidate[] = [];
-  
+
   // Genera tutte le possibili combinazioni di squadre
   const teamCombinations = [
     // Squadra A: [0,1], Squadra B: [2,3]
@@ -154,8 +163,15 @@ function generateBestMatch(
       combo.teamB,
       teammatePairs,
       opponentPairs,
-      playerScores
+      playerScores,
+      playerGames
     );
+    
+    // Salta completamente i candidati impossibili (weight = Infinity)
+    if (weight === Infinity) {
+      console.log(`❌ Combinazione IMPOSSIBILE saltata: ${combo.teamA.map(p => p.name).join(',')} vs ${combo.teamB.map(p => p.name).join(',')}`);
+      continue;
+    }
     
     const scoreA = (playerScores.get(combo.teamA[0].id || "") || 0) + 
                    (playerScores.get(combo.teamA[1].id || "") || 0);
@@ -204,7 +220,8 @@ function generateIntelligentPairings(
   teammatePairs: Set<string>,
   opponentPairs: Set<string>,
   playerScores: Map<string, number>,
-  playedCount: Map<string, number>
+  playedCount: Map<string, number>,
+  playerGames?: Map<string, { gamesWon: number; gamesLost: number }>
 ): MatchCandidate[] {
   const matches: MatchCandidate[] = [];
   const usedPlayers = new Set<string>();
@@ -230,7 +247,7 @@ function generateIntelligentPairings(
     let bestScore = Infinity;
     
     for (const combination of allCombinations) {
-      const match = generateBestMatch(combination, teammatePairs, opponentPairs, playerScores);
+      const match = generateBestMatch(combination, teammatePairs, opponentPairs, playerScores, playerGames);
       
       if (match) {
         // Calcola un punteggio composito che considera:
@@ -253,7 +270,8 @@ function generateIntelligentPairings(
     
     // Se non troviamo nessuna combinazione valida, fermiamoci
     if (!bestMatch) {
-      console.log("Nessuna combinazione valida trovata, fermando la generazione");
+      console.log(`❌ Nessuna combinazione valida trovata per i giocatori: ${availablePlayers.map(p => p.name).join(', ')}`);
+      console.log("🛑 Fermando la generazione per evitare accoppiamenti ripetuti");
       break;
     }
     
@@ -368,28 +386,44 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
 
   // Calcola punteggi attuali per bilanciamento
   const playerScores = new Map<string, number>();
+  const playerGames = new Map<string, { gamesWon: number; gamesLost: number }>();
   for (const p of players) {
     playerScores.set(p.id || "", 0);
+    playerGames.set(p.id || "", { gamesWon: 0, gamesLost: 0 });
   }
   
-  // Somma i punteggi dalle partite completate
+  // Somma i punteggi e game dalle partite completate
   for (const m of completedMatches) {
     const a: LightPlayer[] = (m.teamA || []).map(toLight);
     const b: LightPlayer[] = (m.teamB || []).map(toLight);
     const scoreA = Number(m.scoreA || 0);
     const scoreB = Number(m.scoreB || 0);
+    const gamesA = Number(m.totalGamesA || 0);
+    const gamesB = Number(m.totalGamesB || 0);
     
     a.forEach(p => {
       if (p.id) {
-        const current = playerScores.get(p.id) || 0;
-        playerScores.set(p.id, current + scoreA);
+        const currentScore = playerScores.get(p.id) || 0;
+        playerScores.set(p.id, currentScore + scoreA);
+        
+        const currentGames = playerGames.get(p.id) || { gamesWon: 0, gamesLost: 0 };
+        playerGames.set(p.id, {
+          gamesWon: currentGames.gamesWon + gamesA,
+          gamesLost: currentGames.gamesLost + gamesB
+        });
       }
     });
     
     b.forEach(p => {
       if (p.id) {
-        const current = playerScores.get(p.id) || 0;
-        playerScores.set(p.id, current + scoreB);
+        const currentScore = playerScores.get(p.id) || 0;
+        playerScores.set(p.id, currentScore + scoreB);
+        
+        const currentGames = playerGames.get(p.id) || { gamesWon: 0, gamesLost: 0 };
+        playerGames.set(p.id, {
+          gamesWon: currentGames.gamesWon + gamesB,
+          gamesLost: currentGames.gamesLost + gamesA
+        });
       }
     });
   }
@@ -400,7 +434,8 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
     teammatePairs,
     opponentPairs,
     playerScores,
-    playedCount
+    playedCount,
+    playerGames
   );
 
   if (intelligentMatches.length === 0) {
