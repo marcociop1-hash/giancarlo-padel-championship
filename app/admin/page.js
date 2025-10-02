@@ -134,6 +134,10 @@ export default function AdminPage() {
   const [genMsg, setGenMsg] = useState("");
   const genEndpointUsed = "/api/admin/genera-giornata";
 
+  // Debug: Generazione partite + risultati
+  const [debugGenState, setDebugGenState] = useState("idle"); // "idle" | "loading" | "success" | "error"
+  const [debugGenMsg, setDebugGenMsg] = useState("");
+
   // Reset torneo (server API)
   const [resetState, setResetState] = useState("idle"); // "idle" | "loading" | "success" | "error"
   const [resetMsg, setResetMsg] = useState("");
@@ -379,6 +383,82 @@ export default function AdminPage() {
     }
   }, [genEndpointUsed, fetchConfirmed]);
 
+  // Debug: Genera partite + risultati randomi
+  const handleGenerateWithResults = useCallback(async () => {
+    setDebugGenState("loading");
+    setDebugGenMsg("");
+    try {
+      // 1. Genera le partite
+      const res = await fetch(genEndpointUsed, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      
+      if (!res.ok) {
+        setDebugGenState("error");
+        setDebugGenMsg((data && (data.message || data.error)) || `HTTP ${res.status}`);
+        return;
+      }
+
+      // 2. Se le partite sono state create, assegna risultati randomi
+      if (data.created > 0) {
+        // Carica le partite appena create (dovrebbero essere in stato "scheduled")
+        const matchesRes = await fetch('/api/admin/debug-matches');
+        const matchesData = await matchesRes.json();
+        
+        if (matchesData.matches) {
+          const scheduledMatches = matchesData.matches.filter(m => m.status === "scheduled");
+          let completedCount = 0;
+          
+          // Assegna risultati randomi a tutte le partite programmate
+          for (const match of scheduledMatches) {
+            const possibleResults = ["3-0", "2-1", "1-2", "0-3"];
+            const randomResult = possibleResults[Math.floor(Math.random() * possibleResults.length)];
+            const [scoreA, scoreB] = randomResult.split("-").map(x => parseInt(x));
+            const winnerTeam = scoreA > scoreB ? "A" : "B";
+            
+            try {
+              await setDoc(
+                doc(db, "matches", match.id),
+                {
+                  scoreA,
+                  scoreB,
+                  winnerTeam,
+                  status: "completed",
+                  completedAt: Date.now(),
+                },
+                { merge: true }
+              );
+              completedCount++;
+            } catch (e) {
+              console.error("Errore aggiornamento partita:", e);
+            }
+          }
+          
+          setDebugGenState("success");
+          setDebugGenMsg(`✅ Generati ${data.created} partite e completati ${completedCount} con risultati randomi!`);
+          
+          // Ricarica i dati
+          fetchConfirmed();
+          
+          // Invalida la cache della classifica
+          try {
+            await fetch('/api/classifica?refresh=true');
+          } catch (e) {
+            console.log('Errore invalidation cache classifica:', e);
+          }
+        } else {
+          setDebugGenState("success");
+          setDebugGenMsg(`✅ Generati ${data.created} partite, ma nessuna partita programmata trovata per i risultati`);
+        }
+      } else {
+        setDebugGenState("success");
+        setDebugGenMsg("✅ Nessuna partita generata (campionato completato o altri motivi)");
+      }
+    } catch (e) {
+      setDebugGenState("error");
+      setDebugGenMsg((e && (e.message || String(e))) || "Errore di rete");
+    }
+  }, [genEndpointUsed, fetchConfirmed]);
+
   const handleDeletePlayers = useCallback(async () => {
     if (!confirmPlayers) {
       setConfirmPlayers(true);
@@ -545,6 +625,37 @@ export default function AdminPage() {
         </div>
         <div className="text-xs text-gray-500">
           Endpoint: <code>{genEndpointUsed}</code>
+        </div>
+      </section>
+
+      {/* ====== DEBUG: GENERA PARTITE + RISULTATI ====== */}
+      <section className="rounded-2xl border bg-yellow-50 p-4 space-y-3">
+        <h2 className="text-lg font-medium text-yellow-800">🚀 Debug: Genera Partite + Risultati</h2>
+        <p className="text-sm text-yellow-700">
+          <b>ATTENZIONE:</b> Questo pulsante genera partite E assegna risultati randomi automaticamente.
+          Utile per testare velocemente l'algoritmo di accoppiamenti. I risultati sono casuali!
+        </p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleGenerateWithResults}
+            disabled={debugGenState === "loading"}
+            className={`rounded-xl px-4 py-2 text-white ${
+              debugGenState === "loading"
+                ? "bg-gray-400 cursor-not-allowed"
+                : "bg-yellow-600 hover:bg-yellow-700"
+            }`}
+          >
+            {debugGenState === "loading" ? "Generazione + Risultati…" : "🚀 Genera + Risultati Random"}
+          </button>
+          {debugGenState === "success" && (
+            <span className="text-green-700 text-sm">✅ {debugGenMsg}</span>
+          )}
+          {debugGenState === "error" && (
+            <span className="text-red-700 text-sm">❌ {debugGenMsg}</span>
+          )}
+        </div>
+        <div className="text-xs text-yellow-600">
+          ⚠️ <b>Debug Mode:</b> Genera partite e assegna risultati casuali (3-0, 2-1, 1-2, 0-3)
         </div>
       </section>
 
