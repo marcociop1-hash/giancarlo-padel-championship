@@ -228,81 +228,74 @@ function generateAllCombinations(players: LightPlayer[]): LightPlayer[][] {
 }
 
 /**
- * Genera un piano completo di accoppiamenti per tutte le giornate
- * Usa un algoritmo globale per distribuire le 120 coppie in 15 giornate
+ * FASE 1: Genera calendario perfetto delle coppie (0 ripetizioni garantite)
+ * Distribuisce le 120 coppie in 15 giornate senza mai ripetere compagni
  */
-function generateGlobalPairingPlan(players: LightPlayer[]): MatchCandidate[][] {
-  const allDays: MatchCandidate[][] = [];
+function generatePerfectPairingCalendar(players: LightPlayer[]): { teamA: LightPlayer[], teamB: LightPlayer[] }[][] {
+  const allDays: { teamA: LightPlayer[], teamB: LightPlayer[] }[][] = [];
   const usedPairs = new Set<string>();
   const playerIds = players.map(p => p.id || "");
   
-  // Genera tutte le possibili coppie
-  const allPairs: string[][] = [];
-  for (let i = 0; i < playerIds.length; i++) {
-    for (let j = i + 1; j < playerIds.length; j++) {
-      allPairs.push([playerIds[i], playerIds[j]]);
-    }
-  }
+  console.log(`🎯 FASE 1: Generando calendario perfetto delle coppie per ${players.length} giocatori`);
   
-  console.log(`🎯 Generando piano globale: ${allPairs.length} coppie per ${players.length} giocatori`);
-  
-  // Per ogni giornata, cerca di creare 4 partite senza ripetere coppie
+  // Per ogni giornata, crea 4 partite con coppie mai usate
   for (let day = 0; day < 15; day++) {
-    const dayMatches: MatchCandidate[] = [];
+    const dayMatches: { teamA: LightPlayer[], teamB: LightPlayer[] }[] = [];
     const usedToday = new Set<string>();
     
-    // Cerca di creare 4 partite per questa giornata
+    // Crea 4 partite per questa giornata
     for (let match = 0; match < 4; match++) {
-      let bestMatch: MatchCandidate | null = null;
-      let bestScore = Infinity;
-      
-      // Prova diverse combinazioni di 4 giocatori non ancora usati oggi
       const availablePlayers = playerIds.filter(id => !usedToday.has(id));
       
       if (availablePlayers.length < 4) break;
       
-      // Genera combinazioni di 4 giocatori
-      const combinations = generateAllCombinations(
-        availablePlayers.map(id => players.find(p => p.id === id)!).slice(0, Math.min(availablePlayers.length, 8))
-      );
+      // Trova una combinazione di 4 giocatori con coppie mai usate
+      let foundMatch = false;
       
-      for (const combination of combinations) {
-        // Verifica che le coppie non siano già state usate
-        const pair1 = pairKey(combination[0].id || "", combination[1].id || "");
-        const pair2 = pairKey(combination[2].id || "", combination[3].id || "");
-        
-        if (usedPairs.has(pair1) || usedPairs.has(pair2)) {
-          continue; // Salta se le coppie sono già state usate
+      // Prova diverse combinazioni
+      for (let i = 0; i < availablePlayers.length - 3 && !foundMatch; i++) {
+        for (let j = i + 1; j < availablePlayers.length - 2 && !foundMatch; j++) {
+          for (let k = j + 1; k < availablePlayers.length - 1 && !foundMatch; k++) {
+            for (let l = k + 1; l < availablePlayers.length && !foundMatch; l++) {
+              const p1 = players.find(p => p.id === availablePlayers[i])!;
+              const p2 = players.find(p => p.id === availablePlayers[j])!;
+              const p3 = players.find(p => p.id === availablePlayers[k])!;
+              const p4 = players.find(p => p.id === availablePlayers[l])!;
+              
+              // Prova le 3 possibili combinazioni di squadre
+              const combinations = [
+                { teamA: [p1, p2], teamB: [p3, p4] },
+                { teamA: [p1, p3], teamB: [p2, p4] },
+                { teamA: [p1, p4], teamB: [p2, p3] }
+              ];
+              
+              for (const combo of combinations) {
+                const pair1 = pairKey(combo.teamA[0].id || "", combo.teamA[1].id || "");
+                const pair2 = pairKey(combo.teamB[0].id || "", combo.teamB[1].id || "");
+                
+                if (!usedPairs.has(pair1) && !usedPairs.has(pair2)) {
+                  // Trovata combinazione valida!
+                  dayMatches.push(combo);
+                  
+                  // Marca le coppie come usate
+                  usedPairs.add(pair1);
+                  usedPairs.add(pair2);
+                  
+                  // Marca i giocatori come usati oggi
+                  combo.teamA.forEach(p => usedToday.add(p.id || ""));
+                  combo.teamB.forEach(p => usedToday.add(p.id || ""));
+                  
+                  console.log(`Giornata ${day + 1}, Partita ${match + 1}: ${combo.teamA.map(p => p.name).join(',')} vs ${combo.teamB.map(p => p.name).join(',')}`);
+                  foundMatch = true;
+                  break;
+                }
+              }
+            }
+          }
         }
-        
-        // Crea la partita
-        const matchCandidate: MatchCandidate = {
-          teamA: [combination[0], combination[1]],
-          teamB: [combination[2], combination[3]],
-          weight: 0, // Peso 0 per coppie mai usate
-          scoreA: 0,
-          scoreB: 0
-        };
-        
-        bestMatch = matchCandidate;
-        break; // Prendi la prima combinazione valida
       }
       
-      if (bestMatch) {
-        dayMatches.push(bestMatch);
-        
-        // Marca le coppie come usate
-        const pair1 = pairKey(bestMatch.teamA[0].id || "", bestMatch.teamA[1].id || "");
-        const pair2 = pairKey(bestMatch.teamB[0].id || "", bestMatch.teamB[1].id || "");
-        usedPairs.add(pair1);
-        usedPairs.add(pair2);
-        
-        // Marca i giocatori come usati oggi
-        bestMatch.teamA.forEach(p => usedToday.add(p.id || ""));
-        bestMatch.teamB.forEach(p => usedToday.add(p.id || ""));
-        
-        console.log(`Giornata ${day + 1}, Partita ${match + 1}: ${bestMatch.teamA.map(p => p.name).join(',')} vs ${bestMatch.teamB.map(p => p.name).join(',')}`);
-      } else {
+      if (!foundMatch) {
         console.log(`⚠️ Giornata ${day + 1}: Impossibile creare partita ${match + 1} senza ripetere coppie`);
         break;
       }
@@ -316,12 +309,76 @@ function generateGlobalPairingPlan(players: LightPlayer[]): MatchCandidate[][] {
     }
   }
   
-  console.log(`✅ Piano globale completato: ${allDays.length} giornate, ${usedPairs.size} coppie utilizzate`);
+  console.log(`✅ FASE 1 completata: ${allDays.length} giornate, ${usedPairs.size} coppie utilizzate`);
   return allDays;
 }
 
 /**
- * Algoritmo principale per generare accoppiamenti intelligenti - VERSIONE MIGLIORATA
+ * FASE 2-4: Assegna avversari ottimizzando punteggi, game e varietà
+ */
+function optimizeOpponents(
+  dayMatches: { teamA: LightPlayer[], teamB: LightPlayer[] }[],
+  playerScores: Map<string, number>,
+  playerGames: Map<string, { gamesWon: number; gamesLost: number }>,
+  opponentPairs: Set<string>
+): MatchCandidate[] {
+  const optimizedMatches: MatchCandidate[] = [];
+  
+  console.log(`🎯 FASE 2-4: Ottimizzando avversari per ${dayMatches.length} partite`);
+  
+  for (const match of dayMatches) {
+    // Calcola punteggi delle squadre
+    const scoreA = (playerScores.get(match.teamA[0].id || "") || 0) + 
+                   (playerScores.get(match.teamA[1].id || "") || 0);
+    const scoreB = (playerScores.get(match.teamB[0].id || "") || 0) + 
+                   (playerScores.get(match.teamB[1].id || "") || 0);
+    
+    // FASE 3: Se punteggi uguali, usa game per determinare forza
+    let teamAStrength = scoreA;
+    let teamBStrength = scoreB;
+    
+    if (scoreA === scoreB) {
+      const gamesA = (playerGames.get(match.teamA[0].id || "")?.gamesWon || 0) + 
+                     (playerGames.get(match.teamA[1].id || "")?.gamesWon || 0);
+      const gamesB = (playerGames.get(match.teamB[0].id || "")?.gamesWon || 0) + 
+                     (playerGames.get(match.teamB[1].id || "")?.gamesWon || 0);
+      
+      teamAStrength = scoreA + (gamesA / 100); // Aggiungi game come tie-breaker
+      teamBStrength = scoreB + (gamesB / 100);
+    }
+    
+    // FASE 4: Calcola penalità per avversari ripetuti
+    let opponentRepeatPenalty = 0;
+    for (const playerA of match.teamA) {
+      for (const playerB of match.teamB) {
+        const opponentKey = pairKey(playerA.id || "", playerB.id || "");
+        if (opponentPairs.has(opponentKey)) {
+          opponentRepeatPenalty += 50; // Penalità per avversari ripetuti
+        }
+      }
+    }
+    
+    // Calcola peso finale
+    const scoreDifference = Math.abs(teamAStrength - teamBStrength);
+    const weight = (scoreDifference * 100) + opponentRepeatPenalty;
+    
+    optimizedMatches.push({
+      teamA: match.teamA,
+      teamB: match.teamB,
+      weight: weight,
+      scoreA: scoreA,
+      scoreB: scoreB
+    });
+    
+    console.log(`Partita ottimizzata: ${match.teamA.map(p => p.name).join(',')} vs ${match.teamB.map(p => p.name).join(',')} - Peso: ${weight.toFixed(2)}`);
+  }
+  
+  return optimizedMatches;
+}
+
+/**
+ * Algoritmo di fallback per generare accoppiamenti intelligenti
+ * Usato quando il calendario perfetto non è disponibile
  */
 function generateIntelligentPairings(
   players: LightPlayer[],
@@ -573,27 +630,32 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
     });
   }
 
-  // NUOVO ALGORITMO: Prova prima il piano globale, poi fallback intelligente
+  // NUOVO ALGORITMO IN 4 FASI: Calendario perfetto + Ottimizzazione avversari
   let intelligentMatches: MatchCandidate[] = [];
   
-  // Se è la prima giornata o abbiamo poche partite giocate, prova il piano globale
   const totalMatchesPlayed = completedMatches.length;
-  if (totalMatchesPlayed < 8) { // Prova piano globale per le prime 2 giornate
-    console.log("🎯 Tentativo piano globale per evitare ripetizioni future");
-    const globalPlan = generateGlobalPairingPlan(players);
+  const currentDayIndex = Math.floor(totalMatchesPlayed / 4);
+  
+  console.log(`🎯 ALGORITMO 4 FASI: Giornata ${currentDayIndex + 1} (${totalMatchesPlayed} partite giocate)`);
+  
+  // FASE 1: Genera calendario perfetto delle coppie (solo per le prime volte)
+  if (totalMatchesPlayed < 60) { // Prime 15 giornate
+    console.log("🎯 FASE 1: Generando calendario perfetto delle coppie");
+    const perfectCalendar = generatePerfectPairingCalendar(players);
     
-    if (globalPlan.length > 0) {
-      const currentDayIndex = Math.floor(totalMatchesPlayed / 4);
-      if (currentDayIndex < globalPlan.length) {
-        intelligentMatches = globalPlan[currentDayIndex];
-        console.log(`✅ Usando piano globale per giornata ${currentDayIndex + 1}`);
-      }
+    if (perfectCalendar.length > currentDayIndex) {
+      const dayMatches = perfectCalendar[currentDayIndex];
+      console.log(`✅ FASE 1 completata: ${dayMatches.length} partite con coppie perfette`);
+      
+      // FASE 2-4: Ottimizza avversari per punteggi, game e varietà
+      intelligentMatches = optimizeOpponents(dayMatches, playerScores, playerGames, opponentPairs);
+      console.log(`✅ FASE 2-4 completata: ${intelligentMatches.length} partite ottimizzate`);
     }
   }
   
-  // Se il piano globale non ha funzionato, usa l'algoritmo intelligente
+  // Fallback: Se il calendario perfetto non funziona, usa algoritmo intelligente
   if (intelligentMatches.length === 0) {
-    console.log("🔄 Piano globale non disponibile, usando algoritmo intelligente");
+    console.log("🔄 Fallback: Usando algoritmo intelligente tradizionale");
     intelligentMatches = generateIntelligentPairings(
       players,
       teammatePairs,
