@@ -288,12 +288,12 @@ export default function AdminPage() {
     } else if (teamAWins) {
       // Set vinto dalla squadra A
       const teamAGames = Math.floor(Math.random() * 3) + 6; // 6, 7, o 8
-      const teamBGames = teamAGames === 6 ? Math.floor(Math.random() * 6) : Math.floor(Math.random() * 6) + 1;
+      const teamBGames = teamAGames === 6 ? Math.floor(Math.random() * 5) + 1 : Math.floor(Math.random() * 5) + 1;
       return { teamA: teamAGames, teamB: teamBGames };
     } else if (teamBWins) {
       // Set vinto dalla squadra B
       const teamBGames = Math.floor(Math.random() * 3) + 6; // 6, 7, o 8
-      const teamAGames = teamBGames === 6 ? Math.floor(Math.random() * 6) : Math.floor(Math.random() * 6) + 1;
+      const teamAGames = teamBGames === 6 ? Math.floor(Math.random() * 5) + 1 : Math.floor(Math.random() * 5) + 1;
       return { teamA: teamAGames, teamB: teamBGames };
     } else {
       // Set non giocato (non dovrebbe succedere)
@@ -492,9 +492,9 @@ export default function AdminPage() {
             const winnerTeam = scoreA > scoreB ? "A" : "B";
             
             // Genera game randomi per ogni set
-            const set1Games = generateRandomSetGames(scoreA > 0, scoreB > 0);
-            const set2Games = generateRandomSetGames(scoreA > 1, scoreB > 1);
-            const set3Games = generateRandomSetGames(scoreA > 2, scoreB > 2);
+            const set1Games = generateRandomSetGames(scoreA >= 1, scoreB >= 1);
+            const set2Games = generateRandomSetGames(scoreA >= 2, scoreB >= 2);
+            const set3Games = generateRandomSetGames(scoreA >= 3, scoreB >= 3);
             
             // Calcola game totali
             const totalGamesA = set1Games.teamA + set2Games.teamA + set3Games.teamA;
