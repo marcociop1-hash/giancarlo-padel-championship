@@ -30,12 +30,14 @@ function calculateStandings(matches: any[]) {
     setsWon: number; 
     setsLost: number; 
     played: number;
+    gamesWon: number;    // Game vinti
+    gamesLost: number;   // Game persi
     matchIds: string[]; // DEBUG: traccia le partite per ogni giocatore
   }>();
 
   const ensure = (id: string, name: string) => {
     if (!stats.has(id)) {
-      stats.set(id, { name, points: 0, setsWon: 0, setsLost: 0, played: 0, matchIds: [] });
+      stats.set(id, { name, points: 0, setsWon: 0, setsLost: 0, played: 0, gamesWon: 0, gamesLost: 0, matchIds: [] });
     }
     return stats.get(id)!;
   };
@@ -64,6 +66,10 @@ function calculateStandings(matches: any[]) {
     const a = Number(m.scoreA || 0);
     const b = Number(m.scoreB || 0);
     const matchId = m.id || `match_${index}`;
+    
+    // Calcola game totali se disponibili
+    const gamesA = Number(m.totalGamesA || 0);
+    const gamesB = Number(m.totalGamesB || 0);
 
     const teamA = (m.teamA || []).map((p: any) => ({ 
       id: p.id || p.playerId, 
@@ -92,14 +98,18 @@ function calculateStandings(matches: any[]) {
       const s = ensure(p.id, p.name);
       const oldPoints = s.points;
       const oldPlayed = s.played;
+      const oldGamesWon = s.gamesWon;
+      const oldGamesLost = s.gamesLost;
       
       s.points += a; 
       s.setsWon += a; 
       s.setsLost += b; 
+      s.gamesWon += gamesA;
+      s.gamesLost += gamesB;
       s.played += 1;
       s.matchIds.push(matchId);
       
-      console.log(`✅ Team A - ${p.name} (${p.id}): punti ${oldPoints}→${s.points}, partite ${oldPlayed}→${s.played}, match: ${matchId}`);
+      console.log(`✅ Team A - ${p.name} (${p.id}): punti ${oldPoints}→${s.points}, partite ${oldPlayed}→${s.played}, game ${oldGamesWon}→${s.gamesWon}/${oldGamesLost}→${s.gamesLost}, match: ${matchId}`);
     });
     
     teamB.forEach((p: any) => {
@@ -110,14 +120,18 @@ function calculateStandings(matches: any[]) {
       const s = ensure(p.id, p.name);
       const oldPoints = s.points;
       const oldPlayed = s.played;
+      const oldGamesWon = s.gamesWon;
+      const oldGamesLost = s.gamesLost;
       
       s.points += b; 
       s.setsWon += b; 
       s.setsLost += a; 
+      s.gamesWon += gamesB;
+      s.gamesLost += gamesA;
       s.played += 1;
       s.matchIds.push(matchId);
       
-      console.log(`✅ Team B - ${p.name} (${p.id}): punti ${oldPoints}→${s.points}, partite ${oldPlayed}→${s.played}, match: ${matchId}`);
+      console.log(`✅ Team B - ${p.name} (${p.id}): punti ${oldPoints}→${s.points}, partite ${oldPlayed}→${s.played}, game ${oldGamesWon}→${s.gamesWon}/${oldGamesLost}→${s.gamesLost}, match: ${matchId}`);
     });
   });
 
@@ -129,12 +143,16 @@ function calculateStandings(matches: any[]) {
       setsWon: s.setsWon,
       setsLost: s.setsLost,
       setDiff: s.setsWon - s.setsLost,
+      gamesWon: s.gamesWon,
+      gamesLost: s.gamesLost,
+      gameDiff: s.gamesWon - s.gamesLost,
       played: s.played,
       matchIds: s.matchIds, // DEBUG: includi le partite nel risultato
     }))
     .sort((x, y) => (
       y.points - x.points ||
       (y.setsWon - y.setsLost) - (x.setsWon - x.setsLost) ||
+      (y.gamesWon - y.gamesLost) - (x.gamesWon - x.gamesLost) ||
       x.played - y.played ||
       x.name.localeCompare(y.name)
     ));
@@ -144,7 +162,7 @@ function calculateStandings(matches: any[]) {
   
   // Debug dettagliato di ogni giocatore
   result.forEach((player, index) => {
-    console.log(`${index + 1}. ${player.name}: ${player.points} punti, ${player.played} partite, matches: [${player.matchIds.join(', ')}]`);
+    console.log(`${index + 1}. ${player.name}: ${player.points} punti, ${player.played} partite, game ${player.gamesWon}-${player.gamesLost} (diff: ${player.gameDiff}), matches: [${player.matchIds.join(', ')}]`);
   });
   
   console.log('=== FINE CALCOLO CLASSIFICA ===\n');
@@ -257,7 +275,7 @@ export async function GET(req: Request) {
     // Debug dettagliato di ogni giocatore
     console.log('\n=== DETTAGLIO GIOCATORI ===');
     rows.forEach((player, index) => {
-      console.log(`${index + 1}. ${player.name}: ${player.points} punti, ${player.played} partite, matches: [${player.matchIds.join(', ')}]`);
+      console.log(`${index + 1}. ${player.name}: ${player.points} punti, ${player.played} partite, game ${player.gamesWon}-${player.gamesLost} (diff: ${player.gameDiff}), matches: [${player.matchIds.join(', ')}]`);
     });
     console.log('=== FINE DETTAGLIO ===\n');
 
