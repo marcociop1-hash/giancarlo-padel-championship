@@ -251,7 +251,55 @@ export default function AdminPage() {
   // Dropdown risultati ammessi
   const allowed = ["3-0", "2-1", "1-2", "0-3"];
   const [scores, setScores] = useState({}); // { [matchId]: "3-0" | ... }
+  
+  // Stati per i game dei 3 set
+  const [set1Games, setSet1Games] = useState({}); // { [matchId]: { teamA: 6, teamB: 4 } }
+  const [set2Games, setSet2Games] = useState({});
+  const [set3Games, setSet3Games] = useState({});
   const setScore = (id, v) => setScores((s) => ({ ...s, [id]: v }));
+  
+  // Funzioni per gestire i game dei set
+  const setSet1Game = (id, team, value) => {
+    setSet1Games(prev => ({
+      ...prev,
+      [id]: { ...prev[id], [team]: parseInt(value) || 0 }
+    }));
+  };
+  
+  const setSet2Game = (id, team, value) => {
+    setSet2Games(prev => ({
+      ...prev,
+      [id]: { ...prev[id], [team]: parseInt(value) || 0 }
+    }));
+  };
+  
+  const setSet3Game = (id, team, value) => {
+    setSet3Games(prev => ({
+      ...prev,
+      [id]: { ...prev[id], [team]: parseInt(value) || 0 }
+    }));
+  };
+  
+  // Funzione per generare game randomi per un set
+  const generateRandomSetGames = (teamAWins, teamBWins) => {
+    if (teamAWins && teamBWins) {
+      // Set vinto da entrambe le squadre (impossibile, ma gestiamo)
+      return { teamA: 6, teamB: 4 };
+    } else if (teamAWins) {
+      // Set vinto dalla squadra A
+      const teamAGames = Math.floor(Math.random() * 3) + 6; // 6, 7, o 8
+      const teamBGames = teamAGames === 6 ? Math.floor(Math.random() * 6) : Math.floor(Math.random() * 6) + 1;
+      return { teamA: teamAGames, teamB: teamBGames };
+    } else if (teamBWins) {
+      // Set vinto dalla squadra B
+      const teamBGames = Math.floor(Math.random() * 3) + 6; // 6, 7, o 8
+      const teamAGames = teamBGames === 6 ? Math.floor(Math.random() * 6) : Math.floor(Math.random() * 6) + 1;
+      return { teamA: teamAGames, teamB: teamBGames };
+    } else {
+      // Set non giocato (non dovrebbe succedere)
+      return { teamA: 0, teamB: 0 };
+    }
+  };
 
   // Determina se la supercoppa è completata e i vincitori
   const supercoppaCompleted = useMemo(() => {
@@ -331,8 +379,23 @@ export default function AdminPage() {
     if (!allowed.includes(sel)) {
       return setMsg("Seleziona un risultato valido (3-0, 2-1, 1-2, 0-3).");
     }
+    
+    // Validazione game dei set
+    const set1 = set1Games[m.id] || {};
+    const set2 = set2Games[m.id] || {};
+    const set3 = set3Games[m.id] || {};
+    
+    if (!set1.teamA || !set1.teamB || !set2.teamA || !set2.teamB || !set3.teamA || !set3.teamB) {
+      return setMsg("Inserisci i game per tutti e 3 i set.");
+    }
+    
     const [aS, bS] = sel.split("-").map((x) => Number(x));
     const winnerTeam = aS > bS ? "A" : "B";
+    
+    // Calcola game totali
+    const totalGamesA = (set1.teamA || 0) + (set2.teamA || 0) + (set3.teamA || 0);
+    const totalGamesB = (set1.teamB || 0) + (set2.teamB || 0) + (set3.teamB || 0);
+    
     try {
       await setDoc(
         doc(db, "matches", m.id),
@@ -342,11 +405,24 @@ export default function AdminPage() {
           winnerTeam,
           status: "completed",
           completedAt: Date.now(),
+          // Game per set
+          set1Games: set1,
+          set2Games: set2,
+          set3Games: set3,
+          // Game totali
+          totalGamesA,
+          totalGamesB,
         },
         { merge: true }
       );
-      setMsg("Risultato salvato. La partita passa in stato Giocata. La classifica si aggiorna automaticamente.");
+      setMsg("Risultato salvato con dettagli game. La partita passa in stato Giocata. La classifica si aggiorna automaticamente.");
       setConfirmedMatches((prev) => prev.filter((x) => x.id !== m.id));
+      
+      // Pulisci i form
+      setScores(prev => ({ ...prev, [m.id]: "" }));
+      setSet1Games(prev => ({ ...prev, [m.id]: {} }));
+      setSet2Games(prev => ({ ...prev, [m.id]: {} }));
+      setSet3Games(prev => ({ ...prev, [m.id]: {} }));
       
       // Ricarica le partite confermate per aggiornare la lista
       fetchConfirmed();
@@ -415,6 +491,15 @@ export default function AdminPage() {
             const [scoreA, scoreB] = randomResult.split("-").map(x => parseInt(x));
             const winnerTeam = scoreA > scoreB ? "A" : "B";
             
+            // Genera game randomi per ogni set
+            const set1Games = generateRandomSetGames(scoreA > 0, scoreB > 0);
+            const set2Games = generateRandomSetGames(scoreA > 1, scoreB > 1);
+            const set3Games = generateRandomSetGames(scoreA > 2, scoreB > 2);
+            
+            // Calcola game totali
+            const totalGamesA = set1Games.teamA + set2Games.teamA + set3Games.teamA;
+            const totalGamesB = set1Games.teamB + set2Games.teamB + set3Games.teamB;
+            
             try {
               await setDoc(
                 doc(db, "matches", match.id),
@@ -424,6 +509,13 @@ export default function AdminPage() {
                   winnerTeam,
                   status: "completed",
                   completedAt: Date.now(),
+                  // Game per set
+                  set1Games,
+                  set2Games,
+                  set3Games,
+                  // Game totali
+                  totalGamesA,
+                  totalGamesB,
                 },
                 { merge: true }
               );
@@ -688,24 +780,106 @@ export default function AdminPage() {
                   {teamLabel(m.teamA)} vs {teamLabel(m.teamB)}
                 </div>
 
-                <div className="mt-2 flex items-center gap-2">
-                  <select
-                    className="w-32 rounded-md border px-2 py-1 text-sm"
-                    value={scores[m.id] || ""}
-                    onChange={(e) => setScore(m.id, e.target.value)}
-                  >
-                    <option value="">Seleziona risultato</option>
-                    {allowed.map((o) => (
-                      <option key={o} value={o}>
-                        {o}
-                      </option>
-                    ))}
-                  </select>
+                <div className="mt-3 space-y-3">
+                  {/* Risultato finale */}
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-gray-700">Risultato finale:</label>
+                    <select
+                      className="w-32 rounded-md border px-2 py-1 text-sm"
+                      value={scores[m.id] || ""}
+                      onChange={(e) => setScore(m.id, e.target.value)}
+                    >
+                      <option value="">Seleziona risultato</option>
+                      {allowed.map((o) => (
+                        <option key={o} value={o}>
+                          {o}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* Game per set */}
+                  <div className="space-y-2">
+                    <div className="text-sm font-medium text-gray-700">Game per set:</div>
+                    
+                    {/* Set 1 */}
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="w-12 text-gray-600">Set 1:</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="7"
+                        className="w-16 rounded-md border px-2 py-1 text-center"
+                        placeholder="A"
+                        value={set1Games[m.id]?.teamA || ""}
+                        onChange={(e) => setSet1Game(m.id, "teamA", e.target.value)}
+                      />
+                      <span className="text-gray-500">-</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="7"
+                        className="w-16 rounded-md border px-2 py-1 text-center"
+                        placeholder="B"
+                        value={set1Games[m.id]?.teamB || ""}
+                        onChange={(e) => setSet1Game(m.id, "teamB", e.target.value)}
+                      />
+                    </div>
+                    
+                    {/* Set 2 */}
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="w-12 text-gray-600">Set 2:</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="7"
+                        className="w-16 rounded-md border px-2 py-1 text-center"
+                        placeholder="A"
+                        value={set2Games[m.id]?.teamA || ""}
+                        onChange={(e) => setSet2Game(m.id, "teamA", e.target.value)}
+                      />
+                      <span className="text-gray-500">-</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="7"
+                        className="w-16 rounded-md border px-2 py-1 text-center"
+                        placeholder="B"
+                        value={set2Games[m.id]?.teamB || ""}
+                        onChange={(e) => setSet2Game(m.id, "teamB", e.target.value)}
+                      />
+                    </div>
+                    
+                    {/* Set 3 */}
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="w-12 text-gray-600">Set 3:</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="7"
+                        className="w-16 rounded-md border px-2 py-1 text-center"
+                        placeholder="A"
+                        value={set3Games[m.id]?.teamA || ""}
+                        onChange={(e) => setSet3Game(m.id, "teamA", e.target.value)}
+                      />
+                      <span className="text-gray-500">-</span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="7"
+                        className="w-16 rounded-md border px-2 py-1 text-center"
+                        placeholder="B"
+                        value={set3Games[m.id]?.teamB || ""}
+                        onChange={(e) => setSet3Game(m.id, "teamB", e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  
                   <button
                     onClick={() => saveResult(m)}
-                    className="ml-2 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
+                    className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
                   >
-                    Salva risultato
+                    Salva risultato completo
                   </button>
                 </div>
               </div>
