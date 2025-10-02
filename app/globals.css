@@ -1,0 +1,34 @@
+/* ====== Tailwind base (se usi Tailwind) ====== */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ====== Reset/typography leggeri (opzionali, safe) ====== */
+html, body {
+  height: 100%;
+}
+
+/* ====== SFONDO GRADIENTE “COME PRIMA” ======
+   - base: verticale mint → bianco → azzurro
+   - blob morbido in alto a sinistra (mint)
+   - blob morbido in basso a destra (azzurro)
+*/
+.bg-padel-gradient {
+  /* fallback colore chiaro */
+  background: #f7fffb;
+  /* stratificazione di gradienti per l’effetto “soft blobs” */
+  background-image:
+    radial-gradient(1200px 700px at 8% 8%, rgba(198, 246, 213, 0.55), rgba(198, 246, 213, 0) 60%),
+    radial-gradient(1200px 800px at 85% 85%, rgba(191, 219, 254, 0.45), rgba(191, 219, 254, 0) 55%),
+    linear-gradient(to bottom, #eefdf4 0%, #ffffff 35%, #eef7ff 100%);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+/* Se vuoi un bordo più morbido per card/pulsanti (come nello screen) */
+.card {
+  @apply rounded-2xl border bg-white;
+}
+.btn {
+  @apply rounded-lg px-3 py-1.5 text-sm;
+}
