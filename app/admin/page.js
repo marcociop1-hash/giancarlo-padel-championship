@@ -286,33 +286,33 @@ export default function AdminPage() {
       // Set vinto da entrambe le squadre (impossibile, ma gestiamo)
       return { teamA: 6, teamB: 4 };
     } else if (teamAWins) {
-      // Set vinto dalla squadra A - deve avere almeno 6 game e differenza minima 2
-      const teamAGames = Math.floor(Math.random() * 2) + 6; // 6 o 7
-      let teamBGames;
+      // Set vinto dalla squadra A
+      // Possibili risultati: 6-0, 6-1, 6-2, 6-3, 6-4, 7-5
+      const possibleResults = [
+        { teamA: 6, teamB: 0 },
+        { teamA: 6, teamB: 1 },
+        { teamA: 6, teamB: 2 },
+        { teamA: 6, teamB: 3 },
+        { teamA: 6, teamB: 4 },
+        { teamA: 7, teamB: 5 }
+      ];
       
-      if (teamAGames === 6) {
-        // Se A ha 6, B può avere massimo 4
-        teamBGames = Math.floor(Math.random() * 4) + 1; // 1, 2, 3, o 4
-      } else {
-        // Se A ha 7, B può avere massimo 5
-        teamBGames = Math.floor(Math.random() * 5) + 1; // 1, 2, 3, 4, o 5
-      }
-      
-      return { teamA: teamAGames, teamB: teamBGames };
+      const randomResult = possibleResults[Math.floor(Math.random() * possibleResults.length)];
+      return randomResult;
     } else if (teamBWins) {
-      // Set vinto dalla squadra B - deve avere almeno 6 game e differenza minima 2
-      const teamBGames = Math.floor(Math.random() * 2) + 6; // 6 o 7
-      let teamAGames;
+      // Set vinto dalla squadra B
+      // Possibili risultati: 0-6, 1-6, 2-6, 3-6, 4-6, 5-7
+      const possibleResults = [
+        { teamA: 0, teamB: 6 },
+        { teamA: 1, teamB: 6 },
+        { teamA: 2, teamB: 6 },
+        { teamA: 3, teamB: 6 },
+        { teamA: 4, teamB: 6 },
+        { teamA: 5, teamB: 7 }
+      ];
       
-      if (teamBGames === 6) {
-        // Se B ha 6, A può avere massimo 4
-        teamAGames = Math.floor(Math.random() * 4) + 1; // 1, 2, 3, o 4
-      } else {
-        // Se B ha 7, A può avere massimo 5
-        teamAGames = Math.floor(Math.random() * 5) + 1; // 1, 2, 3, 4, o 5
-      }
-      
-      return { teamA: teamAGames, teamB: teamBGames };
+      const randomResult = possibleResults[Math.floor(Math.random() * possibleResults.length)];
+      return randomResult;
     } else {
       // Set non giocato (non dovrebbe succedere)
       return { teamA: 0, teamB: 0 };
