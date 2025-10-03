@@ -686,6 +686,19 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
       teamB: match.teamB,
       matchday: nextMatchday,
       giornata: Date.now(), // Identificatore univoco per la giornata
+      // Salva i punteggi al momento della generazione per il log
+      generationPoints: {
+        teamA: {
+          player1: { id: match.teamA[0].id, name: match.teamA[0].name, points: match.teamA[0].points || 0 },
+          player2: { id: match.teamA[1].id, name: match.teamA[1].name, points: match.teamA[1].points || 0 },
+          total: (match.teamA[0].points || 0) + (match.teamA[1].points || 0)
+        },
+        teamB: {
+          player1: { id: match.teamB[0].id, name: match.teamB[0].name, points: match.teamB[0].points || 0 },
+          player2: { id: match.teamB[1].id, name: match.teamB[1].name, points: match.teamB[1].points || 0 },
+          total: (match.teamB[0].points || 0) + (match.teamB[1].points || 0)
+        }
+      }
     };
 
     const matchRef = db.collection("matches").doc();

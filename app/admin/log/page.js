@@ -33,13 +33,29 @@ function normalizeTeam(team) {
 function teamLabel(team, players = [], standings = [], match = null) {
   const t = normalizeTeam(team);
   
-  // Trova i giocatori e i loro punteggi dalla classifica
-  const standingA = standings.find(s => s.playerId === t.a.id);
-  const standingB = standings.find(s => s.playerId === t.b.id);
+  // PRIORITÀ: Usa i punteggi salvati al momento della generazione se disponibili
+  let scoreA, scoreB, totalScore;
   
-  const scoreA = standingA?.points || 0;
-  const scoreB = standingB?.points || 0;
-  const totalScore = scoreA + scoreB;
+  if (match && match.generationPoints) {
+    // Usa i punteggi al momento della generazione
+    const isTeamA = match.teamA && match.teamA.some(p => p.id === t.a.id);
+    if (isTeamA) {
+      scoreA = match.generationPoints.teamA.player1.points;
+      scoreB = match.generationPoints.teamA.player2.points;
+      totalScore = match.generationPoints.teamA.total;
+    } else {
+      scoreA = match.generationPoints.teamB.player1.points;
+      scoreB = match.generationPoints.teamB.player2.points;
+      totalScore = match.generationPoints.teamB.total;
+    }
+  } else {
+    // Fallback: usa i punteggi dalla classifica attuale
+    const standingA = standings.find(s => s.playerId === t.a.id);
+    const standingB = standings.find(s => s.playerId === t.b.id);
+    scoreA = standingA?.points || 0;
+    scoreB = standingB?.points || 0;
+    totalScore = scoreA + scoreB;
+  }
   
   // Se abbiamo i dati della partita, mostra i game di questa partita specifica
   if (match && match.totalGamesA !== undefined && match.totalGamesB !== undefined) {
@@ -419,13 +435,24 @@ export default function LogPage() {
                     {(() => {
                       const teamA = normalizeTeam(match.teamA);
                       const teamB = normalizeTeam(match.teamB);
-                      const standingA1 = standings.find(s => s.playerId === teamA.a.id);
-                      const standingA2 = standings.find(s => s.playerId === teamA.b.id);
-                      const standingB1 = standings.find(s => s.playerId === teamB.a.id);
-                      const standingB2 = standings.find(s => s.playerId === teamB.b.id);
                       
-                      const scoreA = (standingA1?.points || 0) + (standingA2?.points || 0);
-                      const scoreB = (standingB1?.points || 0) + (standingB2?.points || 0);
+                      let scoreA, scoreB;
+                      
+                      // PRIORITÀ: Usa i punteggi al momento della generazione se disponibili
+                      if (match.generationPoints) {
+                        scoreA = match.generationPoints.teamA.total;
+                        scoreB = match.generationPoints.teamB.total;
+                      } else {
+                        // Fallback: usa i punteggi dalla classifica attuale
+                        const standingA1 = standings.find(s => s.playerId === teamA.a.id);
+                        const standingA2 = standings.find(s => s.playerId === teamA.b.id);
+                        const standingB1 = standings.find(s => s.playerId === teamB.a.id);
+                        const standingB2 = standings.find(s => s.playerId === teamB.b.id);
+                        
+                        scoreA = (standingA1?.points || 0) + (standingA2?.points || 0);
+                        scoreB = (standingB1?.points || 0) + (standingB2?.points || 0);
+                      }
+                      
                       const diff = Math.abs(scoreA - scoreB);
                       
                       return (
