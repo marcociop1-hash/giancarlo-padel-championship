@@ -476,6 +476,51 @@ function generateIntelligentPairings(
 }
 
 /** =========================
+ *  CALCOLO CLASSIFICA ATTUALE
+ *  ========================= */
+async function calculateCurrentStandings(db: FirebaseFirestore.Firestore) {
+  const snap = await db
+    .collection("matches")
+    .where("phase", "==", "campionato")
+    .where("status", "==", "completed")
+    .get();
+
+  type Acc = { name: string; points: number; wins: number };
+  const map = new Map<string, Acc>();
+
+  const add = (pid: string, name: string, points: number, win: boolean) => {
+    const cur = map.get(pid) || { name, points: 0, wins: 0 };
+    cur.points += points;
+    if (win) cur.wins += 1;
+    map.set(pid, cur);
+  };
+
+  for (const doc of snap.docs) {
+    const m = doc.data() as any;
+    const a: LightPlayer[] = (m.teamA || []).map(toLight);
+    const b: LightPlayer[] = (m.teamB || []).map(toLight);
+    
+    if (a.length >= 2 && b.length >= 2 && typeof m.scoreA === "number" && typeof m.scoreB === "number") {
+      const aWins = m.scoreA > m.scoreB;
+      const pointsA = aWins ? 3 : (m.scoreA === m.scoreB ? 1 : 0);
+      const pointsB = !aWins ? 3 : (m.scoreA === m.scoreB ? 1 : 0);
+      
+      add(a[0].id || "", a[0].name, pointsA, aWins);
+      add(a[1].id || "", a[1].name, pointsA, aWins);
+      add(b[0].id || "", b[0].name, pointsB, !aWins);
+      add(b[1].id || "", b[1].name, pointsB, !aWins);
+    }
+  }
+
+  return Array.from(map.entries()).map(([playerId, v]) => ({
+    playerId,
+    name: v.name,
+    points: v.points,
+    wins: v.wins,
+  }));
+}
+
+/** =========================
  *  GENERAZIONE GIORNATA COMPLETA
  *  ========================= */
 async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
@@ -485,6 +530,15 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
   if (players.length < 4) {
     return { created: 0, reason: "not-enough-players" as const };
   }
+
+  // Calcola la classifica attuale per ottenere i punteggi corretti
+  const standings = await calculateCurrentStandings(db);
+  
+  // Aggiorna i punteggi dei giocatori con quelli della classifica attuale
+  const playersWithCurrentPoints = players.map(player => ({
+    ...player,
+    points: standings.find(s => s.playerId === player.id)?.points || 0
+  }));
 
   // storico campionato
   const matchesSnap = await db.collection("matches").where("phase", "==", "campionato").get();
@@ -514,7 +568,7 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
   
   // Calcola quante partite ha fatto ogni giocatore
   const playerMatchCount = new Map<string, number>();
-  for (const p of players) {
+  for (const p of playersWithCurrentPoints) {
     playerMatchCount.set(p.id || "", 0);
   }
   
@@ -641,7 +695,7 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
   // FASE 1: Genera calendario perfetto delle coppie (solo per le prime volte)
   if (totalMatchesPlayed < 60) { // Prime 15 giornate
     console.log("🎯 FASE 1: Generando calendario perfetto delle coppie");
-    const perfectCalendar = generatePerfectPairingCalendar(players);
+    const perfectCalendar = generatePerfectPairingCalendar(playersWithCurrentPoints);
     
     if (perfectCalendar.length > currentDayIndex) {
       const dayMatches = perfectCalendar[currentDayIndex];
@@ -657,7 +711,7 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
   if (intelligentMatches.length === 0) {
     console.log("🔄 Fallback: Usando algoritmo intelligente tradizionale");
     intelligentMatches = generateIntelligentPairings(
-      players,
+      playersWithCurrentPoints,
       teammatePairs,
       opponentPairs,
       playerScores,
