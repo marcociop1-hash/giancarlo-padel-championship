@@ -80,13 +80,20 @@ export async function POST(req: Request) {
       { merge: true }
     );
 
-    // 5) Invalida la cache della classifica per forzare il ricalcolo
+    // 5) Invalida completamente la cache della classifica
     try {
+      // Cancella la cache locale se esiste
+      if (typeof global !== 'undefined' && global.classificaCache) {
+        global.classificaCache.clear();
+      }
+      
       // Chiama l'API classifica con refresh per invalidare la cache
       const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/classifica?refresh=true`);
       if (!response.ok) {
         console.log('Errore invalidation cache classifica:', response.status);
       }
+      
+      console.log('✅ Cache classifica invalidata completamente');
     } catch (e) {
       console.log('Errore invalidation cache classifica:', e);
     }

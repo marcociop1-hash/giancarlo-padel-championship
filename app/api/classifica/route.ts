@@ -9,6 +9,12 @@ export const dynamic = 'force-dynamic';
 const cache = new Map();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minuti
 
+// Funzione per pulire la cache
+function clearCache() {
+  cache.clear();
+  console.log('🧹 Cache classifica pulita');
+}
+
 function adminDb() {
   if (!getApps().length) {
     const projectId = process.env.FIREBASE_PROJECT_ID!;
@@ -178,6 +184,11 @@ export async function GET(req: Request) {
     
     console.log('=== API CLASSIFICA CHIAMATA ===');
     console.log('forceRefresh:', forceRefresh);
+    
+    // Se forceRefresh, pulisci la cache
+    if (forceRefresh) {
+      clearCache();
+    }
     
     // Controlla cache (salta se forceRefresh)
     const cacheKey = 'classifica';
