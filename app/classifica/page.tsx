@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 
 type Row = {
-  key: string;
+  playerId: string;      // Cambio da 'key' a 'playerId' per compatibilità
   rank: number;
   name: string;
   points: number;        // Punti (1 per ogni set vinto)
@@ -130,7 +130,7 @@ export default function Page() {
               <tbody>
                 {rows.map((r, idx) => (
                   <tr 
-                    key={r.key} 
+                    key={r.playerId} 
                     className={`${
                       idx === 0 ? 'bg-yellow-50 border-l-4 border-yellow-400' : 
                       idx === 1 ? 'bg-gray-100 border-l-4 border-gray-400' : 

@@ -137,7 +137,7 @@ function calculateStandings(matches: any[]) {
 
   const result = Array.from(stats.entries())
     .map(([id, s]) => ({
-      key: id,
+      playerId: id, // Cambio da 'key' a 'playerId' per compatibilità
       name: s.name,
       points: s.points,
       setsWon: s.setsWon,
