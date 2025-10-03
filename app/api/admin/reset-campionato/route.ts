@@ -46,18 +46,27 @@ export async function POST(req: Request) {
     const url = new URL(req.url);
     const wipeMatches = url.searchParams.get("wipeMatches") === "true";
 
+    console.log('🔄 RESET TORNEO INIZIATO');
+    console.log('wipeMatches:', wipeMatches);
+
     // 1) cancella classifica congelata del campionato
+    console.log('🗑️ Cancellando standings_campionato...');
     await deleteAllFromCollection(db, "standings_campionato");
+    console.log('✅ standings_campionato cancellata');
 
     // 2) (opzionale) cancella tutte le partite (campionato + supercoppa)
     if (wipeMatches) {
+      console.log('🗑️ Cancellando TUTTE le partite...');
       await deleteAllFromCollection(db, "matches");
+      console.log('✅ Tutte le partite cancellate');
     } else {
+      console.log('🗑️ Cancellando solo partite supercoppa...');
       // Se non cancelli tutte le partite, cancella solo quelle della supercoppa
       const supercoppaMatches = await db.collection("matches").where("phase", "==", "supercoppa").get();
       const batch = db.batch();
       supercoppaMatches.docs.forEach(doc => batch.delete(doc.ref));
       await batch.commit();
+      console.log('✅ Partite supercoppa cancellate');
     }
 
     // 3) resetta stato torneo -> si torna a "campionato" (non completato)
@@ -80,7 +89,21 @@ export async function POST(req: Request) {
       { merge: true }
     );
 
-    // 5) Invalida completamente la cache della classifica
+    // 5) Verifica che non ci siano partite rimaste (solo se wipeMatches=true)
+    if (wipeMatches) {
+      console.log('🔍 Verificando che tutte le partite siano state cancellate...');
+      const remainingMatches = await db.collection("matches").get();
+      if (!remainingMatches.empty) {
+        console.log(`⚠️ ATTENZIONE: ${remainingMatches.size} partite rimaste dopo il reset!`);
+        remainingMatches.docs.forEach(doc => {
+          console.log(`- Partita rimasta: ${doc.id} (${doc.data().phase || 'no phase'})`);
+        });
+      } else {
+        console.log('✅ Confermato: nessuna partita rimasta');
+      }
+    }
+
+    // 6) Invalida completamente la cache della classifica
     try {
       // Cancella la cache locale se esiste
       if (typeof global !== 'undefined' && global.classificaCache) {

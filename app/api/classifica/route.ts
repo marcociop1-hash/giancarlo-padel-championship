@@ -216,16 +216,22 @@ export async function GET(req: Request) {
       .where('status', '==', 'completed')
       .get();
       
+    console.log(`📊 Trovate ${snap.size} partite con status 'completed'`);
+    
     // Se non troviamo partite con status 'completed', proviamo a cercare partite con scoreA e scoreB
     if (snap.empty) {
       console.log('Nessuna partita con status "completed" trovata, cerco partite con score...');
       const allMatches = await db.collection('matches').get();
+      console.log(`📊 Trovate ${allMatches.size} partite totali nel database`);
+      
       const matchesWithScore = allMatches.docs.filter(doc => {
         const data = doc.data();
         return data.scoreA !== undefined && data.scoreB !== undefined && 
                typeof data.scoreA === 'number' && typeof data.scoreB === 'number' &&
                (data.scoreA > 0 || data.scoreB > 0);
       });
+      
+      console.log(`📊 Trovate ${matchesWithScore.length} partite con score valido`);
       
       if (matchesWithScore.length > 0) {
         console.log(`Trovate ${matchesWithScore.length} partite con score ma senza status 'completed'`);
