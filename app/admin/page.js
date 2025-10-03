@@ -657,12 +657,44 @@ export default function AdminPage() {
         console.log('🔄 Ricaricando partite confermate...');
         fetchConfirmed();
         
+        // Controlla anche le partite confermate
+        setTimeout(async () => {
+          try {
+            const confirmedRes = await fetch('/api/admin/partite-confermate');
+            const confirmedData = await confirmedRes.json();
+            console.log('📋 Partite confermate dopo reset:', confirmedData.length);
+            if (confirmedData.length > 0) {
+              console.log('⚠️ PROBLEMA: Ci sono ancora partite confermate dopo il reset!');
+            } else {
+              console.log('✅ Nessuna partita confermata rimasta');
+            }
+          } catch (e) {
+            console.error('❌ Errore controllo partite confermate:', e);
+          }
+        }, 1000);
+        
         // Forza il refresh della classifica
         console.log('🔄 Forzando refresh classifica...');
         try {
           const classificaRes = await fetch('/api/classifica?refresh=true');
           const classificaData = await classificaRes.json();
           console.log('📊 Classifica dopo reset:', classificaData);
+          
+          // Controlla se ci sono ancora partite
+          if (classificaData.totalMatches > 0) {
+            console.log('⚠️ PROBLEMA: Ci sono ancora', classificaData.totalMatches, 'partite dopo il reset!');
+          } else {
+            console.log('✅ Nessuna partita rimasta dopo il reset');
+          }
+          
+          // Controlla punteggi
+          const playersWithPoints = classificaData.rows?.filter(p => p.points > 0) || [];
+          if (playersWithPoints.length > 0) {
+            console.log('⚠️ PROBLEMA: Giocatori con punteggi > 0:', playersWithPoints.length);
+            console.log('🎯 Esempi:', playersWithPoints.slice(0, 3));
+          } else {
+            console.log('✅ Tutti i giocatori hanno 0 punti');
+          }
         } catch (e) {
           console.error('❌ Errore refresh classifica:', e);
         }
