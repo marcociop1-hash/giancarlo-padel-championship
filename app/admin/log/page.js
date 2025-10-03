@@ -114,11 +114,13 @@ export default function LogPage() {
   const fetchStandings = useCallback(async () => {
     try {
       console.log('🔄 Caricando classifica per log page...');
-      const response = await fetch('/api/classifica');
+      // Forza sempre il refresh per evitare cache stale
+      const response = await fetch('/api/classifica?refresh=true');
       if (response.ok) {
         const data = await response.json();
         console.log('📊 Classifica caricata:', data);
         console.log('📈 Numero giocatori:', data.rows?.length || 0);
+        console.log('🔄 Cache status:', data.cached ? 'CACHED' : 'FRESH');
         
         if (data.rows && data.rows.length > 0) {
           console.log('🎯 Primi 3 giocatori:', data.rows.slice(0, 3));
@@ -126,6 +128,7 @@ export default function LogPage() {
           const playersWithPoints = data.rows.filter(p => p.points > 0);
           if (playersWithPoints.length > 0) {
             console.log('⚠️ ATTENZIONE: Giocatori con punteggi > 0:', playersWithPoints);
+            console.log('🎯 Esempi:', playersWithPoints.slice(0, 3));
           } else {
             console.log('✅ Tutti i giocatori hanno 0 punti');
           }
