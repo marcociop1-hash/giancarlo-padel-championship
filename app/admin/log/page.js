@@ -30,7 +30,7 @@ function normalizeTeam(team) {
   return { a: { id: null, name: "??" }, b: { id: null, name: "??" } };
 }
 
-function teamLabel(team, players = [], standings = []) {
+function teamLabel(team, players = [], standings = [], match = null) {
   const t = normalizeTeam(team);
   
   // Trova i giocatori e i loro punteggi dalla classifica
@@ -41,7 +41,17 @@ function teamLabel(team, players = [], standings = []) {
   const scoreB = standingB?.points || 0;
   const totalScore = scoreA + scoreB;
   
-  // Aggiungi anche i game vinti/persi
+  // Se abbiamo i dati della partita, mostra i game di questa partita specifica
+  if (match && match.totalGamesA !== undefined && match.totalGamesB !== undefined) {
+    // Determina se questa squadra è teamA o teamB
+    const isTeamA = match.teamA && match.teamA.some(p => p.id === t.a.id);
+    const matchGames = isTeamA ? match.totalGamesA : match.totalGamesB;
+    const opponentGames = isTeamA ? match.totalGamesB : match.totalGamesA;
+    
+    return `${t.a.name}(${scoreA}) & ${t.b.name}(${scoreB}) [${totalScore}] | Game: ${matchGames}-${opponentGames}`;
+  }
+  
+  // Fallback: usa i game totali del torneo
   const gamesA = standingA?.gamesWon || 0;
   const gamesLostA = standingA?.gamesLost || 0;
   const gamesB = standingB?.gamesWon || 0;
@@ -175,7 +185,7 @@ export default function LogPage() {
             matchday: parseInt(matchday),
             partner: teamA.b.name,
             partnerId: teamA.b.id,
-            opponent: teamLabel(match.teamB, players, standings),
+            opponent: teamLabel(match.teamB, players, standings, match),
             status: match.status,
             matchId: match.id
           });
@@ -184,7 +194,7 @@ export default function LogPage() {
             matchday: parseInt(matchday),
             partner: teamA.a.name,
             partnerId: teamA.a.id,
-            opponent: teamLabel(match.teamB, players, standings),
+            opponent: teamLabel(match.teamB, players, standings, match),
             status: match.status,
             matchId: match.id
           });
@@ -199,7 +209,7 @@ export default function LogPage() {
             matchday: parseInt(matchday),
             partner: teamB.b.name,
             partnerId: teamB.b.id,
-            opponent: teamLabel(match.teamA, players, standings),
+            opponent: teamLabel(match.teamA, players, standings, match),
             status: match.status,
             matchId: match.id
           });
@@ -208,7 +218,7 @@ export default function LogPage() {
             matchday: parseInt(matchday),
             partner: teamB.a.name,
             partnerId: teamB.a.id,
-            opponent: teamLabel(match.teamA, players, standings),
+            opponent: teamLabel(match.teamA, players, standings, match),
             status: match.status,
             matchId: match.id
           });
@@ -380,7 +390,7 @@ export default function LogPage() {
                   <div key={match.id} className="border rounded-lg p-3 bg-gray-50">
                     <div className="flex items-center justify-between mb-2">
                       <div className="font-medium text-sm">
-                        {teamLabel(match.teamA, players, standings)} vs {teamLabel(match.teamB, players, standings)}
+                        {teamLabel(match.teamA, players, standings, match)} vs {teamLabel(match.teamB, players, standings, match)}
                       </div>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(match.status)}`}>
                         {getStatusIcon(match.status)} {match.status}
