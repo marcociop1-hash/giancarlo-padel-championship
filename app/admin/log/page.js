@@ -33,9 +33,21 @@ function normalizeTeam(team) {
 function teamLabel(team, players = [], standings = []) {
   const t = normalizeTeam(team);
   
+  // Debug: log dei dati
+  console.log("🔍 teamLabel debug:", {
+    team: t,
+    standingsLength: standings.length,
+    standings: standings.slice(0, 3) // Prime 3 righe per debug
+  });
+  
   // Trova i giocatori e i loro punteggi dalla classifica
   const standingA = standings.find(s => s.playerId === t.a.id);
   const standingB = standings.find(s => s.playerId === t.b.id);
+  
+  console.log("🎯 Giocatori trovati:", {
+    playerA: { id: t.a.id, name: t.a.name, standing: standingA },
+    playerB: { id: t.b.id, name: t.b.name, standing: standingB }
+  });
   
   const scoreA = standingA?.points || 0;
   const scoreB = standingB?.points || 0;
@@ -95,13 +107,21 @@ export default function LogPage() {
 
   const fetchStandings = useCallback(async () => {
     try {
+      console.log("🔄 Caricando classifica...");
       const response = await fetch('/api/classifica');
       if (response.ok) {
         const data = await response.json();
+        console.log("📊 Dati classifica ricevuti:", data);
+        console.log("📈 Righe classifica:", data.rows?.length || 0);
+        if (data.rows && data.rows.length > 0) {
+          console.log("🎯 Primo giocatore:", data.rows[0]);
+        }
         setStandings(data.rows || []);
+      } else {
+        console.error("❌ Errore response classifica:", response.status);
       }
     } catch (e) {
-      console.error("Errore caricamento classifica:", e);
+      console.error("❌ Errore caricamento classifica:", e);
     }
   }, []);
 
