@@ -657,21 +657,7 @@ export default function AdminPage() {
         console.log('🔄 Ricaricando partite confermate...');
         fetchConfirmed();
         
-        // Controlla anche le partite confermate
-        setTimeout(async () => {
-          try {
-            const confirmedRes = await fetch('/api/admin/partite-confermate');
-            const confirmedData = await confirmedRes.json();
-            console.log('📋 Partite confermate dopo reset:', confirmedData.length);
-            if (confirmedData.length > 0) {
-              console.log('⚠️ PROBLEMA: Ci sono ancora partite confermate dopo il reset!');
-            } else {
-              console.log('✅ Nessuna partita confermata rimasta');
-            }
-          } catch (e) {
-            console.error('❌ Errore controllo partite confermate:', e);
-          }
-        }, 1000);
+        // Le partite confermate vengono ricaricate tramite fetchConfirmed()
         
         // Forza il refresh della classifica
         console.log('🔄 Forzando refresh classifica...');
