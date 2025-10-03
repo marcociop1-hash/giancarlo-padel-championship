@@ -33,27 +33,23 @@ function normalizeTeam(team) {
 function teamLabel(team, players = [], standings = []) {
   const t = normalizeTeam(team);
   
-  // Debug: log dei dati
-  console.log("🔍 teamLabel debug:", {
-    team: t,
-    standingsLength: standings.length,
-    standings: standings.slice(0, 3) // Prime 3 righe per debug
-  });
-  
   // Trova i giocatori e i loro punteggi dalla classifica
   const standingA = standings.find(s => s.playerId === t.a.id);
   const standingB = standings.find(s => s.playerId === t.b.id);
-  
-  console.log("🎯 Giocatori trovati:", {
-    playerA: { id: t.a.id, name: t.a.name, standing: standingA },
-    playerB: { id: t.b.id, name: t.b.name, standing: standingB }
-  });
   
   const scoreA = standingA?.points || 0;
   const scoreB = standingB?.points || 0;
   const totalScore = scoreA + scoreB;
   
-  return `${t.a.name}(${scoreA}) & ${t.b.name}(${scoreB}) [${totalScore}]`;
+  // Aggiungi anche i game vinti/persi
+  const gamesA = standingA?.gamesWon || 0;
+  const gamesLostA = standingA?.gamesLost || 0;
+  const gamesB = standingB?.gamesWon || 0;
+  const gamesLostB = standingB?.gamesLost || 0;
+  const totalGamesWon = gamesA + gamesB;
+  const totalGamesLost = gamesLostA + gamesLostB;
+  
+  return `${t.a.name}(${scoreA}) & ${t.b.name}(${scoreB}) [${totalScore}] | Game: ${totalGamesWon}-${totalGamesLost}`;
 }
 
 function getStatusColor(status) {
@@ -107,21 +103,13 @@ export default function LogPage() {
 
   const fetchStandings = useCallback(async () => {
     try {
-      console.log("🔄 Caricando classifica...");
       const response = await fetch('/api/classifica');
       if (response.ok) {
         const data = await response.json();
-        console.log("📊 Dati classifica ricevuti:", data);
-        console.log("📈 Righe classifica:", data.rows?.length || 0);
-        if (data.rows && data.rows.length > 0) {
-          console.log("🎯 Primo giocatore:", data.rows[0]);
-        }
         setStandings(data.rows || []);
-      } else {
-        console.error("❌ Errore response classifica:", response.status);
       }
     } catch (e) {
-      console.error("❌ Errore caricamento classifica:", e);
+      console.error("Errore caricamento classifica:", e);
     }
   }, []);
 
@@ -433,6 +421,21 @@ export default function LogPage() {
                       {match.scoreA !== undefined && match.scoreB !== undefined && (
                         <div className="font-medium text-emerald-700">
                           Risultato: {match.scoreA} - {match.scoreB}
+                        </div>
+                      )}
+                      {match.set1Games && match.set2Games && match.set3Games && (
+                        <div className="text-xs">
+                          <span className="font-medium">Game per set:</span> 
+                          <span className="ml-1">
+                            Set1: {match.set1Games.teamA}-{match.set1Games.teamB} | 
+                            Set2: {match.set2Games.teamA}-{match.set2Games.teamB} | 
+                            Set3: {match.set3Games.teamA}-{match.set3Games.teamB}
+                          </span>
+                        </div>
+                      )}
+                      {match.totalGamesA !== undefined && match.totalGamesB !== undefined && (
+                        <div>
+                          Game totali: <span className="font-medium">{match.totalGamesA}-{match.totalGamesB}</span>
                         </div>
                       )}
                     </div>
