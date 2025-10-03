@@ -633,24 +633,48 @@ export default function AdminPage() {
       );
       return;
     }
+    
+    console.log('🔄 RESET TORNEO INIZIATO (CLIENT)');
+    console.log('wipeMatches:', wipeMatches);
+    
     setResetState("loading");
     setResetMsg("");
     try {
       const url = `/api/admin/reset-campionato${wipeMatches ? "?wipeMatches=true" : ""}`;
+      console.log('📡 Chiamando API reset:', url);
+      
       const res = await fetch(url, { method: "POST" });
       const data = await res.json().catch(() => ({}));
+      
+      console.log('📡 Risposta API reset:', { status: res.status, data });
+      
       if (res.ok) {
         setResetState("success");
         setResetMsg(data?.message || "Reset completato.");
+        console.log('✅ Reset completato con successo');
+        
         // ricarica lista "Confermate"
+        console.log('🔄 Ricaricando partite confermate...');
         fetchConfirmed();
+        
+        // Forza il refresh della classifica
+        console.log('🔄 Forzando refresh classifica...');
+        try {
+          const classificaRes = await fetch('/api/classifica?refresh=true');
+          const classificaData = await classificaRes.json();
+          console.log('📊 Classifica dopo reset:', classificaData);
+        } catch (e) {
+          console.error('❌ Errore refresh classifica:', e);
+        }
       } else {
         setResetState("error");
         setResetMsg((data && (data.message || data.error)) || `HTTP ${res.status}`);
+        console.error('❌ Errore reset:', data);
       }
     } catch (e) {
       setResetState("error");
       setResetMsg((e && (e.message || String(e))) || "Errore di rete");
+      console.error('❌ Errore rete reset:', e);
     } finally {
       setConfirmReset(false);
     }

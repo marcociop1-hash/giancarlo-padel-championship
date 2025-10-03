@@ -113,13 +113,30 @@ export default function LogPage() {
 
   const fetchStandings = useCallback(async () => {
     try {
+      console.log('🔄 Caricando classifica per log page...');
       const response = await fetch('/api/classifica');
       if (response.ok) {
         const data = await response.json();
+        console.log('📊 Classifica caricata:', data);
+        console.log('📈 Numero giocatori:', data.rows?.length || 0);
+        
+        if (data.rows && data.rows.length > 0) {
+          console.log('🎯 Primi 3 giocatori:', data.rows.slice(0, 3));
+          // Controlla se ci sono giocatori con punteggi > 0
+          const playersWithPoints = data.rows.filter(p => p.points > 0);
+          if (playersWithPoints.length > 0) {
+            console.log('⚠️ ATTENZIONE: Giocatori con punteggi > 0:', playersWithPoints);
+          } else {
+            console.log('✅ Tutti i giocatori hanno 0 punti');
+          }
+        }
+        
         setStandings(data.rows || []);
+      } else {
+        console.error('❌ Errore response classifica:', response.status);
       }
     } catch (e) {
-      console.error("Errore caricamento classifica:", e);
+      console.error("❌ Errore caricamento classifica:", e);
     }
   }, []);
 
