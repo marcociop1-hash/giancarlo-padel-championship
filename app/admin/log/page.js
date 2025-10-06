@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useMemo } from "react";
+// FIX: Forza rebuild per correggere errore standingA
 import { db } from "../../../lib/firebase";
 import {
   collection,
