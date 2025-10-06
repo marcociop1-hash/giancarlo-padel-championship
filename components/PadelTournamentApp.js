@@ -6,8 +6,6 @@ import { isUserAdmin } from "../lib/admin";
 import {
   collection,
   getDocs,
-  setDoc,
-  doc,
   serverTimestamp,
   getDoc,
   query,
@@ -297,29 +295,28 @@ export default function PadelTournamentApp() {
       
       // Aggiorna username nel profilo Firestore se fornito
       if (newUsername && newUsername !== me.username) {
-        console.log('🔍 Debug profilo update:', {
-          meUid: me.uid,
-          meEmail: me.email,
-          playersCount: players.length,
-          players: players.map(p => ({ id: p.id, uid: p.uid, email: p.email, username: p.username }))
+        console.log('🔍 Aggiornando username via API:', { newUsername, currentUsername: me.username });
+        
+        // Ottieni il token di autenticazione
+        const token = await me.getIdToken();
+        
+        // Chiama l'API server-side per aggiornare l'username
+        const response = await fetch('/api/profile/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ newUsername })
         });
         
-        // Trova il documento del giocatore corrente nella collection players
-        const currentPlayer = players.find(p => p.uid === me.uid || p.id === me.uid);
-        console.log('🎯 Player trovato:', currentPlayer);
+        const data = await response.json();
         
-        if (currentPlayer) {
-          console.log('📝 Aggiornando con ID documento:', currentPlayer.id);
-          await setDoc(doc(db, 'players', currentPlayer.id), {
-            username: newUsername
-          }, { merge: true });
-        } else {
-          console.log('⚠️ Player non trovato, provo con UID diretto:', me.uid);
-          // Fallback: prova con l'UID diretto
-          await setDoc(doc(db, 'players', me.uid), {
-            username: newUsername
-          }, { merge: true });
+        if (!response.ok) {
+          throw new Error(data.error || 'Errore aggiornamento username');
         }
+        
+        console.log('✅ Username aggiornato con successo:', data);
       }
       
       setProfileEdit(prev => ({
@@ -340,7 +337,7 @@ export default function PadelTournamentApp() {
         error: error.message || "Errore nell'aggiornamento del profilo"
       }));
     }
-  }, [me, profileEdit, players]);
+  }, [me, profileEdit]);
 
   const resetProfileForm = useCallback(() => {
     setProfileEdit({
@@ -1352,6 +1349,7 @@ export default function PadelTournamentApp() {
                       value={profileEdit.newPassword}
                       onChange={(e) => setProfileEdit(prev => ({ ...prev, newPassword: e.target.value }))}
                       placeholder="Inserisci nuova password (minimo 6 caratteri)"
+                      autoComplete="new-password"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                     />
                   </div>
@@ -1366,6 +1364,7 @@ export default function PadelTournamentApp() {
                         value={profileEdit.currentPassword}
                         onChange={(e) => setProfileEdit(prev => ({ ...prev, currentPassword: e.target.value }))}
                         placeholder="Inserisci la tua password attuale"
+                        autoComplete="current-password"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                       />
                     </div>
