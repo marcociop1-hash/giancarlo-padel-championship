@@ -33,7 +33,7 @@ function normalizeTeam(team) {
 function teamLabel(team, players = [], standings = [], match = null) {
   const t = normalizeTeam(team);
   
-  // Trova sempre i standings per i giocatori
+  // Trova sempre i standings per i giocatori - FIX DEPLOY
   const standingA = standings.find(s => s.playerId === t.a.id);
   const standingB = standings.find(s => s.playerId === t.b.id);
   
