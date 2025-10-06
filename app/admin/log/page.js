@@ -33,6 +33,10 @@ function normalizeTeam(team) {
 function teamLabel(team, players = [], standings = [], match = null) {
   const t = normalizeTeam(team);
   
+  // Trova sempre i standings per i giocatori
+  const standingA = standings.find(s => s.playerId === t.a.id);
+  const standingB = standings.find(s => s.playerId === t.b.id);
+  
   // PRIORITÀ: Usa i punteggi salvati al momento della generazione se disponibili
   let scoreA, scoreB, totalScore;
   
@@ -50,8 +54,6 @@ function teamLabel(team, players = [], standings = [], match = null) {
     }
   } else {
     // Fallback: usa i punteggi dalla classifica attuale
-    const standingA = standings.find(s => s.playerId === t.a.id);
-    const standingB = standings.find(s => s.playerId === t.b.id);
     scoreA = standingA?.points || 0;
     scoreB = standingB?.points || 0;
     totalScore = scoreA + scoreB;
