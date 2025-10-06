@@ -279,22 +279,56 @@ export async function POST(request: NextRequest) {
       const updateData: any = {
         status: 'da recuperare',
         frozenAt: new Date(),
-        originalMatchday: matchday,
-        originalData: originalData // Salva i dati originali per il ripristino
+        originalMatchday: matchday
       };
 
-      // Rimuovi i campi di risultato solo se esistono
-      if (match.scoreA !== undefined) updateData.scoreA = null;
-      if (match.scoreB !== undefined) updateData.scoreB = null;
-      if (match.totalGamesA !== undefined) updateData.totalGamesA = null;
-      if (match.totalGamesB !== undefined) updateData.totalGamesB = null;
-      if (match.set1Games !== undefined) updateData.set1Games = null;
-      if (match.set2Games !== undefined) updateData.set2Games = null;
-      if (match.set3Games !== undefined) updateData.set3Games = null;
-      if (match.completedBy !== undefined) updateData.completedBy = null;
-      if (match.completedAt !== undefined) updateData.completedAt = null;
+      // Aggiungi originalData solo se non è undefined
+      if (originalData && typeof originalData === 'object') {
+        updateData.originalData = originalData;
+      }
+
+      // Rimuovi i campi di risultato solo se esistono e non sono undefined
+      if (match.scoreA !== undefined && match.scoreA !== null) {
+        updateData.scoreA = null;
+      }
+      if (match.scoreB !== undefined && match.scoreB !== null) {
+        updateData.scoreB = null;
+      }
+      if (match.totalGamesA !== undefined && match.totalGamesA !== null) {
+        updateData.totalGamesA = null;
+      }
+      if (match.totalGamesB !== undefined && match.totalGamesB !== null) {
+        updateData.totalGamesB = null;
+      }
+      if (match.set1Games !== undefined && match.set1Games !== null) {
+        updateData.set1Games = null;
+      }
+      if (match.set2Games !== undefined && match.set2Games !== null) {
+        updateData.set2Games = null;
+      }
+      if (match.set3Games !== undefined && match.set3Games !== null) {
+        updateData.set3Games = null;
+      }
+      if (match.completedBy !== undefined && match.completedBy !== null) {
+        updateData.completedBy = null;
+      }
+      if (match.completedAt !== undefined && match.completedAt !== null) {
+        updateData.completedAt = null;
+      }
 
       console.log(`Update data for match ${match.id}:`, updateData);
+      console.log(`Original match data:`, {
+        scoreA: match.scoreA,
+        scoreB: match.scoreB,
+        totalGamesA: match.totalGamesA,
+        totalGamesB: match.totalGamesB,
+        set1Games: match.set1Games,
+        set2Games: match.set2Games,
+        set3Games: match.set3Games,
+        completedBy: match.completedBy,
+        completedAt: match.completedAt
+      });
+      
       batch.update(matchRef, updateData);
     });
 
