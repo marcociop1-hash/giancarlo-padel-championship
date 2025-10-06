@@ -164,12 +164,19 @@ export async function POST(req: Request) {
     }
     
     // Se si sta aggiornando il risultato (recupero partita), l'admin può sempre farlo
-    // Altrimenti verifica che l'utente sia uno dei giocatori della partita
+    // Altrimenti verifica che l'utente sia uno dei giocatori della partita OPPURE che sia admin
     if (scoreA === undefined && scoreB === undefined) {
-      // Aggiornamento dettagli partita - solo i giocatori possono farlo
+      // Aggiornamento dettagli partita - i giocatori possono farlo, l'admin può farlo per partite scheduled
       const isPlayer = await isPlayerInMatch(db, match, userEmail);
-      if (!isPlayer) {
+      const isAdmin = isEmailAdmin(userEmail);
+      
+      if (!isPlayer && !isAdmin) {
         return NextResponse.json({ error: "Non sei autorizzato a modificare questa partita. Verifica di essere uno dei giocatori della partita e che il tuo account sia collegato al tuo profilo giocatore." }, { status: 403 });
+      }
+      
+      // Se è admin, può aggiornare solo partite in stato "scheduled"
+      if (isAdmin && !isPlayer && match.status !== "scheduled") {
+        return NextResponse.json({ error: "L'admin può aggiornare i dettagli solo per partite in stato 'scheduled'" }, { status: 403 });
       }
     }
     // Per l'inserimento risultati (recupero), l'admin è già stato verificato sopra
@@ -194,19 +201,32 @@ export async function POST(req: Request) {
         updatedAt: Timestamp.now()
       });
     } else {
-      // Conferma partita - aggiorna dettagli
-      await db.collection("matches").doc(matchId).update({
+      // Aggiorna dettagli partita
+      const updateData: any = {
         place: place.trim(),
         date: date.trim(),
         time: time.trim(),
-        status: "confirmed",
-        confirmedBy: {
+        updatedAt: Timestamp.now()
+      };
+      
+      // Se è un giocatore che conferma, cambia status a "confirmed"
+      const isPlayer = await isPlayerInMatch(db, match, userEmail);
+      if (isPlayer) {
+        updateData.status = "confirmed";
+        updateData.confirmedBy = {
           uid: userId,
           email: decodedToken.email || null
-        },
-        confirmedAt: Timestamp.now(),
-        updatedAt: Timestamp.now()
-      });
+        };
+        updateData.confirmedAt = Timestamp.now();
+      } else {
+        // Se è admin, mantiene lo status "scheduled" ma aggiorna i dettagli
+        updateData.updatedBy = {
+          uid: userId,
+          email: decodedToken.email || null
+        };
+      }
+      
+      await db.collection("matches").doc(matchId).update(updateData);
     }
     
     return NextResponse.json({

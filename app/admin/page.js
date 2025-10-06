@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useMemo } from "react";
-import { db } from "../../lib/firebase";
+import { db, auth } from "../../lib/firebase";
 import {
   collection,
   getDocs,
@@ -129,6 +129,10 @@ export default function AdminPage() {
   const [loadingConfirmed, setLoadingConfirmed] = useState(true);
   const [listMsg, setListMsg] = useState("");
 
+  // Matches scheduled for admin management
+  const [scheduledMatches, setScheduledMatches] = useState([]);
+  const [loadingScheduled, setLoadingScheduled] = useState(true);
+
   // Generazione partita
   const [genState, setGenState] = useState("idle"); // "idle" | "loading" | "success" | "error"
   const [genMsg, setGenMsg] = useState("");
@@ -183,6 +187,20 @@ export default function AdminPage() {
       setMsg((e && (e.message || String(e))) || "Errore caricando partite Confermate.");
     } finally {
       setLoadingConfirmed(false);
+    }
+  }, []);
+
+  const fetchScheduled = useCallback(async () => {
+    setLoadingScheduled(true);
+    try {
+      const qy = query(collection(db, "matches"), where("status", "==", "scheduled"));
+      const snap = await getDocs(qy);
+      setScheduledMatches(snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) })));
+    } catch (e) {
+      console.error(e);
+      setMsg((e && (e.message || String(e))) || "Errore caricando partite Programmate.");
+    } finally {
+      setLoadingScheduled(false);
     }
   }, []);
 
@@ -242,11 +260,12 @@ export default function AdminPage() {
 
   useEffect(() => {
     fetchConfirmed();
+    fetchScheduled();
     fetchPlayers();
     fetchSupercoppaMatches();
     fetchRecoveryMatches();
     fetchFrozenMatchdays();
-  }, [fetchConfirmed, fetchPlayers, fetchSupercoppaMatches, fetchRecoveryMatches, fetchFrozenMatchdays]);
+  }, [fetchConfirmed, fetchScheduled, fetchPlayers, fetchSupercoppaMatches, fetchRecoveryMatches, fetchFrozenMatchdays]);
 
   // Dropdown risultati ammessi
   const allowed = ["3-0", "2-1", "1-2", "0-3"];
@@ -257,6 +276,10 @@ export default function AdminPage() {
   const [set2Games, setSet2Games] = useState({});
   const [set3Games, setSet3Games] = useState({});
   const setScore = (id, v) => setScores((s) => ({ ...s, [id]: v }));
+
+  // Stati per i form delle partite scheduled
+  const [scheduledFormData, setScheduledFormData] = useState({}); // { [matchId]: { place: "", date: "", time: "" } }
+  const [scheduledSaving, setScheduledSaving] = useState({}); // { [matchId]: true/false }
   
   // Funzioni per gestire i game dei set
   const setSet1Game = (id, team, value) => {
@@ -278,6 +301,79 @@ export default function AdminPage() {
       ...prev,
       [id]: { ...prev[id], [team]: parseInt(value) || 0 }
     }));
+  };
+
+  // Funzioni per gestire i form delle partite scheduled
+  const setScheduledFormField = (matchId, field, value) => {
+    setScheduledFormData(prev => ({
+      ...prev,
+      [matchId]: { ...prev[matchId], [field]: value }
+    }));
+  };
+
+  const saveScheduledMatchDetails = async (match) => {
+    console.log("🔧 saveScheduledMatchDetails chiamata per match:", match.id);
+    const formData = scheduledFormData[match.id] || {};
+    const { place, date, time } = formData;
+
+    console.log("📝 Form data:", { place, date, time });
+
+    if (!place || !date || !time) {
+      setMsg("Inserisci campo, data e ora per la partita");
+      return;
+    }
+
+    setScheduledSaving(prev => ({ ...prev, [match.id]: true }));
+
+    try {
+      // Ottieni il token di autenticazione
+      const user = auth.currentUser;
+      console.log("👤 User:", user ? user.email : "null");
+      
+      if (!user) {
+        throw new Error("Utente non autenticato");
+      }
+      
+      const token = await user.getIdToken();
+      console.log("🔑 Token ottenuto:", token ? "sì" : "no");
+
+      console.log("📡 Invio richiesta API...");
+      const response = await fetch('/api/matches/update-details', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          matchId: match.id,
+          place,
+          date,
+          time
+        })
+      });
+
+      console.log("📡 Risposta ricevuta:", response.status, response.statusText);
+      const data = await response.json();
+      console.log("📡 Data risposta:", data);
+
+      if (response.ok) {
+        setMsg("Dettagli partita aggiornati con successo");
+        // Ricarica le partite scheduled
+        fetchScheduled();
+        // Pulisci il form
+        setScheduledFormData(prev => {
+          const newData = { ...prev };
+          delete newData[match.id];
+          return newData;
+        });
+      } else {
+        setMsg(`Errore: ${data.error}`);
+      }
+    } catch (error) {
+      setMsg(`Errore: ${error.message}`);
+    } finally {
+      setScheduledSaving(prev => ({ ...prev, [match.id]: false }));
+    }
   };
   
   // Funzione per generare game randomi per un set secondo le regole del padel
@@ -467,6 +563,7 @@ export default function AdminPage() {
         setGenState("success");
         setGenMsg((data?.message || "OK.") + " (nuove partite in stato: In programma)");
         fetchConfirmed();
+        fetchScheduled();
       } else {
         setGenState("error");
         setGenMsg((data && (data.message || data.error)) || `HTTP ${res.status}`);
@@ -573,6 +670,7 @@ export default function AdminPage() {
           
           // Ricarica i dati
           fetchConfirmed();
+          fetchScheduled();
           
           // Invalida la cache della classifica
           try {
@@ -767,6 +865,15 @@ export default function AdminPage() {
   return (
     <main className="mx-auto max-w-3xl p-6 space-y-6">
       <h1 className="text-2xl font-semibold">Strumenti torneo</h1>
+      
+      {/* Debug info */}
+      <div className="rounded-lg border bg-gray-50 p-3 text-xs text-gray-600">
+        <div>Debug Info:</div>
+        <div>• Scheduled matches: {scheduledMatches.length}</div>
+        <div>• Confirmed matches: {confirmedMatches.length}</div>
+        <div>• Loading scheduled: {loadingScheduled ? 'true' : 'false'}</div>
+        <div>• Loading confirmed: {loadingConfirmed ? 'true' : 'false'}</div>
+      </div>
 
       {msg && (
         <div className="rounded-md bg-yellow-50 p-3 text-sm text-yellow-800">
@@ -965,6 +1072,82 @@ export default function AdminPage() {
                     className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
                   >
                     Salva risultato completo
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ====== GESTIONE PARTITE PROGRAMMATE (scheduled) ====== */}
+      <section className="rounded-2xl border bg-white p-4 space-y-4">
+        <h2 className="text-lg font-medium">Gestione Partite Programmate (Scheduled)</h2>
+        <p className="text-sm text-gray-600">
+          Inserisci campo, data e ora per le partite in stato "Programmata". L'admin può aggiornare questi dettagli senza cambiare lo stato della partita.
+        </p>
+        <div className="text-xs text-gray-500 mb-2">
+          Debug: {scheduledMatches.length} partite scheduled trovate
+        </div>
+        {loadingScheduled ? (
+          <div className="text-sm text-gray-600">Caricamento…</div>
+        ) : scheduledMatches.length === 0 ? (
+          <div className="rounded-lg border border-dashed py-6 text-center text-sm text-gray-500">
+            Nessuna partita <b>Programmata</b> in attesa di dettagli.
+            <br />
+            <span className="text-xs text-gray-400 mt-2 block">
+              Genera una nuova giornata per creare partite in stato "scheduled"
+            </span>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {scheduledMatches.map((m) => (
+              <div key={m.id} className="rounded-xl border p-3">
+                <div className="text-sm text-gray-500">
+                  {m.phase
+                    ? m.phase === "campionato"
+                      ? "Campionato"
+                      : m.phase === "supercoppa"
+                      ? "SuperCoppa"
+                      : String(m.phase)
+                    : "—"}{" "}
+                  {m.roundLabel ? `• ${m.roundLabel}` : m.round ? `• Round ${m.round}` : ""}{" "}
+                  {m.matchday ? `• Giornata ${m.matchday}` : ""}
+                </div>
+                <div className="mt-1 font-medium">
+                  {teamLabel(m.teamA)} vs {teamLabel(m.teamB)}
+                </div>
+
+                <div className="mt-3 space-y-3">
+                  <div className="text-sm font-medium text-gray-700">Dettagli partita:</div>
+                  
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    <input
+                      className="rounded-md border px-2 py-1 text-sm"
+                      placeholder="Campo"
+                      value={scheduledFormData[m.id]?.place || m.place || ""}
+                      onChange={(e) => setScheduledFormField(m.id, "place", e.target.value)}
+                    />
+                    <input
+                      className="rounded-md border px-2 py-1 text-sm"
+                      type="date"
+                      value={scheduledFormData[m.id]?.date || m.date || ""}
+                      onChange={(e) => setScheduledFormField(m.id, "date", e.target.value)}
+                    />
+                    <input
+                      className="rounded-md border px-2 py-1 text-sm"
+                      type="time"
+                      value={scheduledFormData[m.id]?.time || m.time || ""}
+                      onChange={(e) => setScheduledFormField(m.id, "time", e.target.value)}
+                    />
+                  </div>
+                  
+                  <button
+                    onClick={() => saveScheduledMatchDetails(m)}
+                    disabled={scheduledSaving[m.id]}
+                    className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+                  >
+                    {scheduledSaving[m.id] ? "Salvataggio…" : "Aggiorna dettagli"}
                   </button>
                 </div>
               </div>
