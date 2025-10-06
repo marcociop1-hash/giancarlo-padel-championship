@@ -1630,43 +1630,6 @@ export default function AdminPage() {
         )}
       </section>
 
-      {/* ====== MIGRAZIONE STATI ====== */}
-      <section className="rounded-2xl border bg-white p-4 space-y-3">
-        <h2 className="text-lg font-medium">Migrazione Stati Partite</h2>
-        <p className="text-sm text-gray-600">
-          Migra le partite da "confirmed" a "completed" per allineare il sistema.
-        </p>
-        
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <button
-            onClick={async () => {
-              try {
-                const response = await fetch('/api/admin/migrate-confirmed-to-completed', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json'
-                  }
-                });
-                
-                if (response.ok) {
-                  const data = await response.json();
-                  alert(`Migrazione completata! ${data.migratedCount} partite migrate da "confirmed" a "completed".`);
-                } else {
-                  const errorData = await response.json();
-                  alert(`Errore: ${errorData.error || 'Errore sconosciuto'}`);
-                }
-              } catch (error) {
-                console.error('Errore migrazione:', error);
-                alert('Errore durante la migrazione');
-              }
-            }}
-            className="rounded-xl px-3 sm:px-4 py-2 bg-orange-600 text-white hover:bg-orange-700 text-sm sm:text-base"
-          >
-            Migra "confirmed" → "completed"
-          </button>
-        </div>
-      </section>
-
       {/* ====== VERIFICA STATO ====== */}
       <section className="rounded-2xl border bg-white p-4 space-y-3">
         <h2 className="text-lg font-medium">Verifica e pulisci stato</h2>
