@@ -1370,7 +1370,7 @@ const ClassificaTab = memo(() => {
       
       {/* Legenda */}
       <div className="mb-3 text-xs text-gray-600 bg-gray-50 p-2 rounded">
-        <strong>P:</strong> Punti • <strong>DG:</strong> Differenza Game vinti/persi • <strong>PG:</strong> Partite Giocate
+        <strong>PG:</strong> Partite Giocate • <strong>DG:</strong> Differenza Game vinti/persi • <strong>P:</strong> Punti
       </div>
       <div className="overflow-x-auto">
       <table className="min-w-full text-sm">
@@ -1378,9 +1378,9 @@ const ClassificaTab = memo(() => {
           <tr>
             <th className="px-3 py-2 text-left">#</th>
             <th className="px-3 py-2 text-left">Giocatore</th>
-            <th className="px-3 py-2 text-right">P</th>
-            <th className="px-3 py-2 text-right">DG</th>
             <th className="px-3 py-2 text-right">PG</th>
+            <th className="px-3 py-2 text-right">DG</th>
+            <th className="px-3 py-2 text-right">P</th>
           </tr>
         </thead>
         <tbody>
@@ -1401,9 +1401,9 @@ const ClassificaTab = memo(() => {
                   {podium || i + 1}
                 </td>
                 <td className="px-3 py-2">{r.name}</td>
-                <td className="px-3 py-2 text-right">{r.points}</td>
-                <td className="px-3 py-2 text-right">{r.gameDiff || 0}</td>
                 <td className="px-3 py-2 text-right">{r.played}</td>
+                <td className="px-3 py-2 text-right">{r.gameDiff || 0}</td>
+                <td className="px-3 py-2 text-right">{r.points}</td>
               </tr>
             );
           })}
