@@ -105,7 +105,7 @@ export async function POST(req: Request) {
     // Se si sta aggiornando il risultato (recupero partita)
     if (scoreA !== undefined && scoreB !== undefined && status) {
       // Solo l'admin può inserire risultati per partite da recuperare
-      if (!isEmailAdmin(userEmail) && !isUsernameAdmin(username)) {
+      if (!isEmailAdmin(userEmail)) {
         return NextResponse.json({ error: "Solo l'admin può inserire i risultati delle partite da recuperare" }, { status: 403 });
       }
       
