@@ -281,26 +281,37 @@ export default function AdminPage() {
   const [scheduledFormData, setScheduledFormData] = useState({}); // { [matchId]: { place: "", date: "", time: "" } }
   const [scheduledSaving, setScheduledSaving] = useState({}); // { [matchId]: true/false }
   
-  // Funzioni per gestire i game dei set
+  // Funzioni per gestire i game dei set (0-7)
   const setSet1Game = (id, team, value) => {
     setSet1Games(prev => ({
       ...prev,
-      [id]: { ...prev[id], [team]: value === "" ? "" : parseInt(value) || 0 }
+      [id]: { ...prev[id], [team]: validateGameValue(value) }
     }));
   };
   
   const setSet2Game = (id, team, value) => {
     setSet2Games(prev => ({
       ...prev,
-      [id]: { ...prev[id], [team]: value === "" ? "" : parseInt(value) || 0 }
+      [id]: { ...prev[id], [team]: validateGameValue(value) }
     }));
   };
   
   const setSet3Game = (id, team, value) => {
     setSet3Games(prev => ({
       ...prev,
-      [id]: { ...prev[id], [team]: value === "" ? "" : parseInt(value) || 0 }
+      [id]: { ...prev[id], [team]: validateGameValue(value) }
     }));
+  };
+
+  // Funzione per validare i game (0-7)
+  const validateGameValue = (value) => {
+    if (value === "") return "";
+    const num = parseInt(value);
+    if (isNaN(num)) return "";
+    // Limita tra 0 e 7
+    if (num < 0) return 0;
+    if (num > 7) return 7;
+    return num;
   };
 
   // Funzioni per gestire i form delle partite scheduled
