@@ -305,15 +305,12 @@ export default function AdminPage() {
 
   // Funzione per validare i game (0-7)
   const validateGameValue = (value) => {
-    console.log("🔍 validateGameValue input:", value, "type:", typeof value);
     if (value === "") return "";
     const num = parseInt(value);
-    console.log("🔍 parsed num:", num, "isNaN:", isNaN(num));
     if (isNaN(num)) return "";
     // Limita tra 0 e 7
     if (num < 0) return 0;
     if (num > 7) return 7;
-    console.log("🔍 returning:", num);
     return num;
   };
 
@@ -1028,7 +1025,7 @@ export default function AdminPage() {
                         max="7"
                         className="w-16 rounded-md border px-2 py-1 text-center"
                         placeholder="A"
-                        value={set1Games[m.id]?.teamA || ""}
+                        value={set1Games[m.id]?.teamA ?? ""}
                         onChange={(e) => setSet1Game(m.id, "teamA", e.target.value)}
                       />
                       <span className="text-gray-500">-</span>
@@ -1038,7 +1035,7 @@ export default function AdminPage() {
                         max="7"
                         className="w-16 rounded-md border px-2 py-1 text-center"
                         placeholder="B"
-                        value={set1Games[m.id]?.teamB || ""}
+                        value={set1Games[m.id]?.teamB ?? ""}
                         onChange={(e) => setSet1Game(m.id, "teamB", e.target.value)}
                       />
                     </div>
@@ -1052,7 +1049,7 @@ export default function AdminPage() {
                         max="7"
                         className="w-16 rounded-md border px-2 py-1 text-center"
                         placeholder="A"
-                        value={set2Games[m.id]?.teamA || ""}
+                        value={set2Games[m.id]?.teamA ?? ""}
                         onChange={(e) => setSet2Game(m.id, "teamA", e.target.value)}
                       />
                       <span className="text-gray-500">-</span>
@@ -1062,7 +1059,7 @@ export default function AdminPage() {
                         max="7"
                         className="w-16 rounded-md border px-2 py-1 text-center"
                         placeholder="B"
-                        value={set2Games[m.id]?.teamB || ""}
+                        value={set2Games[m.id]?.teamB ?? ""}
                         onChange={(e) => setSet2Game(m.id, "teamB", e.target.value)}
                       />
                     </div>
@@ -1076,7 +1073,7 @@ export default function AdminPage() {
                         max="7"
                         className="w-16 rounded-md border px-2 py-1 text-center"
                         placeholder="A"
-                        value={set3Games[m.id]?.teamA || ""}
+                        value={set3Games[m.id]?.teamA ?? ""}
                         onChange={(e) => setSet3Game(m.id, "teamA", e.target.value)}
                       />
                       <span className="text-gray-500">-</span>
@@ -1086,7 +1083,7 @@ export default function AdminPage() {
                         max="7"
                         className="w-16 rounded-md border px-2 py-1 text-center"
                         placeholder="B"
-                        value={set3Games[m.id]?.teamB || ""}
+                        value={set3Games[m.id]?.teamB ?? ""}
                         onChange={(e) => setSet3Game(m.id, "teamB", e.target.value)}
                       />
                     </div>
