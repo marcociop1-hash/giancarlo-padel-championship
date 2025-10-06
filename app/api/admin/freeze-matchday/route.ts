@@ -207,129 +207,51 @@ export async function POST(request: NextRequest) {
 
     console.log(`Freezing matchday ${matchday}: ${matchesToFreeze.length} total matches (${completedMatches.length} completed, ${matchesToFreeze.length - completedMatches.length} incomplete)`);
 
-    // CALCOLA LA CLASSIFICA PRIMA DELLA GIORNATA (escludendo le partite di questa giornata)
-    let standingsBefore: any[] = [];
+    // TEST MINIMO - Solo aggiorna il primo match per testare
+    console.log('=== MINIMAL TEST MODE ===');
+    console.log(`Testing with first match only: ${matchesToFreeze[0]?.id}`);
     
-    try {
-      // CALCOLA LA CLASSIFICA PRIMA DELLA GIORNATA
-      // Esclude TUTTE le partite della giornata (completate e incomplete)
-      const matchesBeforeMatchday = allMatches.filter((m: any) => 
-        m.matchday !== matchday && 
-        m.status === 'completed' &&
-        m.phase === 'campionato'
-      );
-
-      console.log(`Calculating standings before matchday ${matchday}: ${matchesBeforeMatchday.length} completed matches (excluding all matches from matchday ${matchday})`);
-
-      // TEST SEMPLIFICATO - Skip calculation for now
-      console.log('=== SKIPPING STANDINGS CALCULATION FOR DEBUG ===');
-      standingsBefore = []; // Empty array for now
-      console.log('Using empty standings array for testing');
-
-      // Salva la classifica di backup
-      console.log('Saving backup to Firestore...');
-      const backupRef = db.collection('standings_backup').doc(`matchday_${matchday}_before`);
-      await backupRef.set({
-        matchday: matchday,
-        standings: standingsBefore,
-        frozenAt: new Date(),
-        matchesCount: matchesBeforeMatchday.length,
-        excludedMatchday: matchday,
-        note: `Standings calculated excluding ALL matches from matchday ${matchday} (DEBUG MODE)`
-      });
-      
-      console.log(`Backup saved for matchday ${matchday} - standings exclude all matches from this matchday`);
-    } catch (backupError) {
-      console.error('Error calculating or saving backup:', backupError);
-      console.error('Backup error details:', {
-        message: backupError.message,
-        stack: backupError.stack,
-        name: backupError.name
-      });
-      // Continua comunque con il congelamento anche se il backup fallisce
+    if (matchesToFreeze.length === 0) {
+      return NextResponse.json({ error: 'No matches to freeze' }, { status: 400 });
     }
 
-    // CONGELA TUTTE LE PARTITE DELLA GIORNATA
-    console.log(`Starting batch update for ${matchesToFreeze.length} matches`);
-    const batch = db.batch();
+    const testMatch = matchesToFreeze[0];
+    const matchRef = db.collection('matches').doc(testMatch.id);
     
-    matchesToFreeze.forEach((match: any, index: number) => {
-      console.log(`Processing match ${index + 1}/${matchesToFreeze.length}: ${match.id}`);
-      const matchRef = db.collection('matches').doc(match.id);
-      
-      // Salva i dati originali per il ripristino
-      const originalData = {
-        status: match.status,
-        scoreA: match.scoreA,
-        scoreB: match.scoreB,
-        totalGamesA: match.totalGamesA,
-        totalGamesB: match.totalGamesB,
-        set1Games: match.set1Games,
-        set2Games: match.set2Games,
-        set3Games: match.set3Games,
-        completedBy: match.completedBy,
-        completedAt: match.completedAt,
-        confirmedBy: match.confirmedBy,
-        confirmedAt: match.confirmedAt
-      };
-
-      console.log(`Original data for match ${match.id}:`, originalData);
-
-      // Prepara i dati di aggiornamento usando FieldValue.delete() per rimuovere campi
-      const updateData: any = {
-        status: 'da recuperare',
-        frozenAt: new Date(),
-        originalMatchday: matchday,
-        originalData: originalData
-      };
-
-      // Rimuovi i campi di risultato usando FieldValue.delete()
-      // Questo è il modo corretto per rimuovere campi da Firestore
-      updateData.scoreA = FieldValue.delete();
-      updateData.scoreB = FieldValue.delete();
-      updateData.totalGamesA = FieldValue.delete();
-      updateData.totalGamesB = FieldValue.delete();
-      updateData.set1Games = FieldValue.delete();
-      updateData.set2Games = FieldValue.delete();
-      updateData.set3Games = FieldValue.delete();
-      updateData.completedBy = FieldValue.delete();
-      updateData.completedAt = FieldValue.delete();
-
-      console.log(`Update data for match ${match.id}:`, {
-        status: updateData.status,
-        frozenAt: updateData.frozenAt,
-        originalMatchday: updateData.originalMatchday,
-        originalData: updateData.originalData,
-        fieldsToDelete: ['scoreA', 'scoreB', 'totalGamesA', 'totalGamesB', 'set1Games', 'set2Games', 'set3Games', 'completedBy', 'completedAt']
-      });
-      
-      batch.update(matchRef, updateData);
+    console.log(`Test match data:`, {
+      id: testMatch.id,
+      status: testMatch.status,
+      scoreA: testMatch.scoreA,
+      scoreB: testMatch.scoreB
     });
 
-    console.log(`Committing batch update...`);
+    // Test con updateData minimo
+    const testUpdateData = {
+      status: 'da recuperare',
+      frozenAt: new Date(),
+      originalMatchday: matchday,
+      testMode: true
+    };
+
+    console.log(`Test update data:`, testUpdateData);
+
     try {
-      await batch.commit();
-      console.log(`Batch update completed successfully`);
-    } catch (batchError) {
-      console.error('Error committing batch update:', batchError);
-      console.error('Batch error details:', {
-        message: batchError.message,
-        stack: batchError.stack,
-        name: batchError.name
-      });
-      throw batchError; // Rilancia l'errore per gestirlo nel catch principale
+      await matchRef.update(testUpdateData);
+      console.log(`Test update successful for match ${testMatch.id}`);
+    } catch (updateError) {
+      console.error('Test update failed:', updateError);
+      throw updateError;
     }
 
-    console.log(`Successfully frozen matchday ${matchday}: ${matchesToFreeze.length} matches frozen`);
+    console.log(`Test mode successful for matchday ${matchday}`);
 
     return NextResponse.json({
       success: true,
-      message: `Matchday ${matchday} frozen successfully. ${matchesToFreeze.length} matches set to recovery status. Standings restored to state BEFORE matchday ${matchday} (all matchday ${matchday} results excluded from standings).`,
-      frozenMatches: matchesToFreeze.length,
+      message: `Test mode: Successfully updated first match of matchday ${matchday}. This is a minimal test to isolate the error.`,
+      testMode: true,
+      testMatch: testMatch.id,
       totalMatches: targetMatches.length,
-      standingsBackup: standingsBefore.length,
-      excludedMatchday: matchday,
-      note: `Standings now reflect results before matchday ${matchday} started`
+      note: `Only first match was updated in test mode`
     });
 
   } catch (error) {
