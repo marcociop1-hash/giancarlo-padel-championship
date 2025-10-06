@@ -13,7 +13,7 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { onAuthStateChanged } from "firebase/auth";
+import { onAuthStateChanged, updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
 import TournamentBracket from "./TournamentBracket";
 import SupercoppaWinnerBanner from "./SupercoppaWinnerBanner";
 import SupercoppaCompletedBanner from "./SupercoppaCompletedBanner";
@@ -131,6 +131,17 @@ export default function PadelTournamentApp() {
   const [phase, setPhase] = useState(null);
   const [showWinnerBanner, setShowWinnerBanner] = useState(false);
   const [recoveryMatches, setRecoveryMatches] = useState([]);
+
+  // Stati per modifica profilo
+  const [profileEdit, setProfileEdit] = useState({
+    newEmail: "",
+    newPassword: "",
+    currentPassword: "",
+    showForm: false,
+    loading: false,
+    error: "",
+    success: ""
+  });
 
   // Helper per verificare se l'utente è admin
   const isAdmin = useMemo(() => {
@@ -263,6 +274,63 @@ export default function PadelTournamentApp() {
     },
     [me, playersMap]
   );
+
+  // Funzioni per modifica profilo
+  const handleProfileUpdate = useCallback(async () => {
+    if (!me) return;
+    
+    setProfileEdit(prev => ({ ...prev, loading: true, error: "", success: "" }));
+    
+    try {
+      const { newEmail, newPassword, currentPassword } = profileEdit;
+      
+      // Se si vuole cambiare email o password, serve la password corrente per la riautenticazione
+      if ((newEmail || newPassword) && currentPassword) {
+        const credential = EmailAuthProvider.credential(me.email, currentPassword);
+        await reauthenticateWithCredential(me, credential);
+      }
+      
+      // Aggiorna email se fornita
+      if (newEmail && newEmail !== me.email) {
+        await updateEmail(me, newEmail);
+      }
+      
+      // Aggiorna password se fornita
+      if (newPassword) {
+        await updatePassword(me, newPassword);
+      }
+      
+      setProfileEdit(prev => ({
+        ...prev,
+        loading: false,
+        success: "Profilo aggiornato con successo!",
+        newEmail: "",
+        newPassword: "",
+        currentPassword: "",
+        showForm: false
+      }));
+      
+    } catch (error) {
+      console.error("Errore aggiornamento profilo:", error);
+      setProfileEdit(prev => ({
+        ...prev,
+        loading: false,
+        error: error.message || "Errore nell'aggiornamento del profilo"
+      }));
+    }
+  }, [me, profileEdit]);
+
+  const resetProfileForm = useCallback(() => {
+    setProfileEdit({
+      newEmail: "",
+      newPassword: "",
+      currentPassword: "",
+      showForm: false,
+      loading: false,
+      error: "",
+      success: ""
+    });
+  }, []);
 
   // liste base - ottimizzate con useMemo e sorting migliorato
   const scheduled = useMemo(
@@ -1197,6 +1265,112 @@ export default function PadelTournamentApp() {
                   <div className="text-sm text-gray-600">% Vittorie</div>
                 </div>
               </div>
+            </div>
+
+            {/* MODIFICA PROFILO */}
+            <div className="bg-white rounded-xl border p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                ⚙️ Modifica Profilo
+              </h3>
+              
+              {profileEdit.success && (
+                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-green-800 text-sm">{profileEdit.success}</p>
+                </div>
+              )}
+              
+              {profileEdit.error && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-800 text-sm">{profileEdit.error}</p>
+                </div>
+              )}
+              
+              {!profileEdit.showForm ? (
+                <div className="text-center">
+                  <button
+                    onClick={() => setProfileEdit(prev => ({ ...prev, showForm: true }))}
+                    className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors"
+                  >
+                    Modifica Email e Password
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email Attuale
+                    </label>
+                    <input
+                      type="email"
+                      value={me?.email || ""}
+                      disabled
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Nuova Email
+                    </label>
+                    <input
+                      type="email"
+                      value={profileEdit.newEmail}
+                      onChange={(e) => setProfileEdit(prev => ({ ...prev, newEmail: e.target.value }))}
+                      placeholder="Inserisci nuova email"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Nuova Password
+                    </label>
+                    <input
+                      type="password"
+                      value={profileEdit.newPassword}
+                      onChange={(e) => setProfileEdit(prev => ({ ...prev, newPassword: e.target.value }))}
+                      placeholder="Inserisci nuova password (minimo 6 caratteri)"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Password Attuale (richiesta per confermare le modifiche)
+                    </label>
+                    <input
+                      type="password"
+                      value={profileEdit.currentPassword}
+                      onChange={(e) => setProfileEdit(prev => ({ ...prev, currentPassword: e.target.value }))}
+                      placeholder="Inserisci la tua password attuale"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    />
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleProfileUpdate}
+                      disabled={profileEdit.loading || (!profileEdit.newEmail && !profileEdit.newPassword) || !profileEdit.currentPassword}
+                      className="flex-1 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {profileEdit.loading ? "Aggiornamento..." : "Aggiorna Profilo"}
+                    </button>
+                    <button
+                      onClick={resetProfileForm}
+                      disabled={profileEdit.loading}
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                    >
+                      Annulla
+                    </button>
+                  </div>
+                  
+                  <div className="text-xs text-gray-500">
+                    <p>• Per modificare email o password, devi inserire la password attuale</p>
+                    <p>• La nuova password deve essere di almeno 6 caratteri</p>
+                    <p>• Puoi modificare solo email, solo password, o entrambe</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* CONSIGLI PADEL */}
