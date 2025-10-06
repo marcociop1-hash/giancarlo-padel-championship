@@ -133,6 +133,14 @@ export async function POST(request: NextRequest) {
     const db = adminDb();
     console.log('Firebase admin initialized successfully');
     
+    // TEST SEMPLIFICATO - RIMUOVI QUESTO DOPO IL DEBUG
+    console.log('=== SIMPLIFIED TEST MODE ===');
+    return NextResponse.json({
+      success: true,
+      message: `Test mode: Would freeze matchday ${matchday}`,
+      testMode: true
+    });
+    
     // Cerca tutte le partite del campionato
     console.log('Querying championship matches...');
     const allMatchesSnapshot = await db.collection('matches')
