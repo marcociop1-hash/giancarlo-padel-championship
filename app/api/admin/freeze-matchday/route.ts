@@ -196,47 +196,37 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Trova le partite da congelare (SOLO quelle senza risultati)
-    // Le partite con risultati sono state giocate e non devono essere "da recuperare"
-    const matchesToFreeze = targetMatches.filter((m: any) => {
-      // Una partita ha risultati se ha scoreA e scoreB definiti
-      const hasResults = (m.scoreA !== undefined && m.scoreA !== null) && 
-                        (m.scoreB !== undefined && m.scoreB !== null);
-      return !hasResults; // Solo le partite SENZA risultati
-    });
+    // Trova le partite da congelare (TUTTE le partite della giornata)
+    // Quando congeli una giornata, devi annullare TUTTI i risultati, anche quelli completati
+    const matchesToFreeze = targetMatches; // Congela TUTTE le partite della giornata
     
     const matchesWithResults = targetMatches.filter((m: any) => {
       const hasResults = (m.scoreA !== undefined && m.scoreA !== null) && 
                         (m.scoreB !== undefined && m.scoreB !== null);
-      return hasResults; // Partite CON risultati
+      return hasResults; // Partite CON risultati (per logging)
     });
     
     if (matchesToFreeze.length === 0) {
       return NextResponse.json({ 
-        error: `Matchday ${matchday} cannot be frozen - all matches have results (have been played). Only matches without results can be set to recovery status.` 
+        error: `Matchday ${matchday} cannot be frozen - no matches found` 
       }, { status: 400 });
     }
 
-    console.log(`Freezing matchday ${matchday}: ${matchesToFreeze.length} matches without results (to be set as 'da recuperare'), ${matchesWithResults.length} matches with results (will remain completed)`);
+    console.log(`Freezing matchday ${matchday}: ${matchesToFreeze.length} total matches (${matchesWithResults.length} with results will be reset, ${matchesToFreeze.length - matchesWithResults.length} without results) - ALL will be set to 'da recuperare'`);
 
     // CALCOLA LA CLASSIFICA PRIMA DELLA GIORNATA (escludendo le partite di questa giornata)
     let standingsBefore: any[] = [];
     
     try {
       // CALCOLA LA CLASSIFICA PRIMA DELLA GIORNATA
-      // Esclude solo le partite della giornata che hanno risultati (sono state giocate)
-      const matchesBeforeMatchday = allMatches.filter((m: any) => {
-        if (m.matchday !== matchday) {
-          return m.status === 'completed' && m.phase === 'campionato';
-        } else {
-          // Per le partite della giornata corrente, escludi solo quelle con risultati
-          const hasResults = (m.scoreA !== undefined && m.scoreA !== null) && 
-                            (m.scoreB !== undefined && m.scoreB !== null);
-          return !hasResults; // Escludi solo le partite CON risultati
-        }
-      });
+      // Esclude TUTTE le partite della giornata (completate e incomplete)
+      const matchesBeforeMatchday = allMatches.filter((m: any) => 
+        m.matchday !== matchday && 
+        m.status === 'completed' &&
+        m.phase === 'campionato'
+      );
 
-      console.log(`Calculating standings before matchday ${matchday}: ${matchesBeforeMatchday.length} matches (excluding only played matches from matchday ${matchday})`);
+      console.log(`Calculating standings before matchday ${matchday}: ${matchesBeforeMatchday.length} completed matches (excluding ALL matches from matchday ${matchday})`);
 
       // Calcola la classifica prima della giornata
       console.log('Calling calculateStandingsBeforeMatchday...');
@@ -328,14 +318,14 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Matchday ${matchday} frozen successfully. ${successCount} matches without results set to recovery status. ${matchesWithResults.length} matches with results remain completed. Standings restored to exclude only played matches from matchday ${matchday}.`,
+      message: `Matchday ${matchday} frozen successfully. ${successCount} matches set to recovery status (${matchesWithResults.length} with results reset, ${successCount - matchesWithResults.length} without results). Standings restored to exclude ALL matches from matchday ${matchday}.`,
       frozenMatches: successCount,
       matchesWithResults: matchesWithResults.length,
       totalMatches: targetMatches.length,
       standingsBackup: standingsBefore.length,
       excludedMatchday: matchday,
       errors: errorCount,
-      note: `Only unplayed matches set to recovery. Played matches remain completed.`
+      note: `ALL matches from matchday ${matchday} set to recovery. All results from this matchday are now invalid.`
     });
 
   } catch (error) {
