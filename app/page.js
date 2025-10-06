@@ -7,7 +7,7 @@ import PadelTournamentApp from '../components/PadelTournamentApp';
 import { useAuth } from '../lib/hooks/useAuth';
 
 const Home = memo(() => {
-  const { user, loading, error: authError, login, register, logout } = useAuth();
+  const { user, loading, error: authError, login, register, logout, resetPassword } = useAuth();
   const [uiLoading, setUiLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -43,6 +43,19 @@ const Home = memo(() => {
     }
   }, [logout]);
 
+  const handleResetPassword = useCallback(async (username) => {
+    try {
+      setError(''); 
+      setUiLoading(true);
+      const result = await resetPassword(username);
+      setError(`Email di reset inviata a: ${result.email}`);
+    } catch (e) {
+      setError(e?.message || 'Errore nell\'invio dell\'email di reset');
+    } finally {
+      setUiLoading(false);
+    }
+  }, [resetPassword]);
+
   // Mostra errori di autenticazione o UI
   const displayError = authError || error;
 
@@ -64,6 +77,7 @@ const Home = memo(() => {
     <LoginForm
       onLogin={handleLogin}
       onRegister={handleRegister}
+      onResetPassword={handleResetPassword}
       error={displayError}
       loading={uiLoading}
     />
