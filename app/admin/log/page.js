@@ -253,7 +253,7 @@ export default function LogPage() {
           time: editForm.time,
           scoreA: editForm.scoreA ? parseInt(editForm.scoreA) : undefined,
           scoreB: editForm.scoreB ? parseInt(editForm.scoreB) : undefined,
-          status: editForm.status,
+          status: "completed", // Forza sempre completed quando si modifica dal log
           totalGamesA: editForm.totalGamesA ? parseInt(editForm.totalGamesA) : undefined,
           totalGamesB: editForm.totalGamesB ? parseInt(editForm.totalGamesB) : undefined,
           set1Games: {
@@ -826,15 +826,9 @@ export default function LogPage() {
                   
                   <div>
                     <label className="block text-sm font-medium mb-1">Status</label>
-                    <select
-                      value={editForm.status}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, status: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="scheduled">Scheduled</option>
-                      <option value="completed">Completed</option>
-                      <option value="da recuperare">Da recuperare</option>
-                    </select>
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600">
+                      Completed (automatico)
+                    </div>
                   </div>
                 </div>
                 
