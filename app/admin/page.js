@@ -275,32 +275,80 @@ export default function AdminPage() {
   const [set1Games, setSet1Games] = useState({}); // { [matchId]: { teamA: 6, teamB: 4 } }
   const [set2Games, setSet2Games] = useState({});
   const [set3Games, setSet3Games] = useState({});
+  
+  // Stati per i messaggi di errore dei set
+  const [setErrors, setSetErrors] = useState({}); // { [matchId]: { set1: "messaggio", set2: "messaggio", set3: "messaggio" } }
   const setScore = (id, v) => setScores((s) => ({ ...s, [id]: v }));
 
   // Stati per i form delle partite scheduled
   const [scheduledFormData, setScheduledFormData] = useState({}); // { [matchId]: { place: "", date: "", time: "" } }
   const [scheduledSaving, setScheduledSaving] = useState({}); // { [matchId]: true/false }
   
-  // Funzioni per gestire i game dei set (0-7)
+  // Funzioni per gestire i game dei set (0-7) con validazione regole padel
   const setSet1Game = (id, team, value) => {
-    setSet1Games(prev => ({
-      ...prev,
-      [id]: { ...prev[id], [team]: validateGameValue(value) }
-    }));
+    const validatedValue = validateGameValue(value);
+    setSet1Games(prev => {
+      const newSet1Games = {
+        ...prev,
+        [id]: { ...prev[id], [team]: validatedValue }
+      };
+      
+      // Valida le regole del padel per questo set
+      const gameA = newSet1Games[id]?.teamA;
+      const gameB = newSet1Games[id]?.teamB;
+      const validation = validateSetRules(gameA, gameB);
+      
+      setSetErrors(prevErrors => ({
+        ...prevErrors,
+        [id]: { ...prevErrors[id], set1: validation.message }
+      }));
+      
+      return newSet1Games;
+    });
   };
   
   const setSet2Game = (id, team, value) => {
-    setSet2Games(prev => ({
-      ...prev,
-      [id]: { ...prev[id], [team]: validateGameValue(value) }
-    }));
+    const validatedValue = validateGameValue(value);
+    setSet2Games(prev => {
+      const newSet2Games = {
+        ...prev,
+        [id]: { ...prev[id], [team]: validatedValue }
+      };
+      
+      // Valida le regole del padel per questo set
+      const gameA = newSet2Games[id]?.teamA;
+      const gameB = newSet2Games[id]?.teamB;
+      const validation = validateSetRules(gameA, gameB);
+      
+      setSetErrors(prevErrors => ({
+        ...prevErrors,
+        [id]: { ...prevErrors[id], set2: validation.message }
+      }));
+      
+      return newSet2Games;
+    });
   };
   
   const setSet3Game = (id, team, value) => {
-    setSet3Games(prev => ({
-      ...prev,
-      [id]: { ...prev[id], [team]: validateGameValue(value) }
-    }));
+    const validatedValue = validateGameValue(value);
+    setSet3Games(prev => {
+      const newSet3Games = {
+        ...prev,
+        [id]: { ...prev[id], [team]: validatedValue }
+      };
+      
+      // Valida le regole del padel per questo set
+      const gameA = newSet3Games[id]?.teamA;
+      const gameB = newSet3Games[id]?.teamB;
+      const validation = validateSetRules(gameA, gameB);
+      
+      setSetErrors(prevErrors => ({
+        ...prevErrors,
+        [id]: { ...prevErrors[id], set3: validation.message }
+      }));
+      
+      return newSet3Games;
+    });
   };
 
   // Funzione per validare i game (0-7)
@@ -312,6 +360,45 @@ export default function AdminPage() {
     if (num < 0) return 0;
     if (num > 7) return 7;
     return num;
+  };
+
+  // Funzione per validare le regole del padel per un set
+  const validateSetRules = (gameA, gameB) => {
+    // Se uno dei due è vuoto, non validare ancora
+    if (gameA === "" || gameB === "" || gameA === undefined || gameB === undefined) {
+      return { valid: true, message: "" };
+    }
+
+    const a = parseInt(gameA);
+    const b = parseInt(gameB);
+
+    // Regola 1: Nessun 6-6
+    if (a === 6 && b === 6) {
+      return { valid: false, message: "Impossibile 6-6. Usa il tie-break (7-6)" };
+    }
+
+    // Regola 2: Una squadra deve aver vinto almeno 6 game
+    if (a < 6 && b < 6) {
+      return { valid: false, message: "Una squadra deve aver vinto almeno 6 game" };
+    }
+
+    // Regola 3: Se una squadra ha 6 game, l'altra deve averne meno di 6
+    if (a === 6 && b >= 6) {
+      return { valid: false, message: "Se una squadra ha 6 game, l'altra deve averne meno di 6" };
+    }
+    if (b === 6 && a >= 6) {
+      return { valid: false, message: "Se una squadra ha 6 game, l'altra deve averne meno di 6" };
+    }
+
+    // Regola 4: Se una squadra ha 7 game, l'altra deve averne 5 o 6 (tie-break)
+    if (a === 7 && b !== 5 && b !== 6) {
+      return { valid: false, message: "Con 7 game, l'altra squadra deve averne 5 o 6" };
+    }
+    if (b === 7 && a !== 5 && a !== 6) {
+      return { valid: false, message: "Con 7 game, l'altra squadra deve averne 5 o 6" };
+    }
+
+    return { valid: true, message: "" };
   };
 
   // Funzioni per gestire i form delle partite scheduled
@@ -559,6 +646,7 @@ export default function AdminPage() {
       setSet1Games(prev => ({ ...prev, [m.id]: {} }));
       setSet2Games(prev => ({ ...prev, [m.id]: {} }));
       setSet3Games(prev => ({ ...prev, [m.id]: {} }));
+      setSetErrors(prev => ({ ...prev, [m.id]: {} }));
       
       // Ricarica le partite confermate per aggiornare la lista
       fetchConfirmed();
@@ -1039,6 +1127,11 @@ export default function AdminPage() {
                         onChange={(e) => setSet1Game(m.id, "teamB", e.target.value)}
                       />
                     </div>
+                    {setErrors[m.id]?.set1 && (
+                      <div className="text-xs text-red-600 bg-red-50 p-1 rounded">
+                        ⚠️ {setErrors[m.id].set1}
+                      </div>
+                    )}
                     
                     {/* Set 2 */}
                     <div className="flex items-center gap-2 text-sm">
@@ -1063,6 +1156,11 @@ export default function AdminPage() {
                         onChange={(e) => setSet2Game(m.id, "teamB", e.target.value)}
                       />
                     </div>
+                    {setErrors[m.id]?.set2 && (
+                      <div className="text-xs text-red-600 bg-red-50 p-1 rounded">
+                        ⚠️ {setErrors[m.id].set2}
+                      </div>
+                    )}
                     
                     {/* Set 3 */}
                     <div className="flex items-center gap-2 text-sm">
@@ -1087,6 +1185,11 @@ export default function AdminPage() {
                         onChange={(e) => setSet3Game(m.id, "teamB", e.target.value)}
                       />
                     </div>
+                    {setErrors[m.id]?.set3 && (
+                      <div className="text-xs text-red-600 bg-red-50 p-1 rounded">
+                        ⚠️ {setErrors[m.id].set3}
+                      </div>
+                    )}
                   </div>
                   
                   <button
