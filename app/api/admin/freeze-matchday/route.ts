@@ -203,8 +203,10 @@ export async function POST(request: NextRequest) {
 
     console.log(`Freezing matchday ${matchday}: ${matchesToFreeze.length} matches to freeze`);
 
+    // CALCOLA LA CLASSIFICA PRIMA DELLA GIORNATA (escludendo le partite di questa giornata)
+    let standingsBefore: any[] = [];
+    
     try {
-      // CALCOLA LA CLASSIFICA PRIMA DELLA GIORNATA (escludendo le partite di questa giornata)
       const matchesBeforeMatchday = allMatches.filter((m: any) => 
         m.matchday !== matchday && 
         m.status === 'completed' &&
@@ -214,7 +216,7 @@ export async function POST(request: NextRequest) {
       console.log(`Calculating standings before matchday ${matchday}: ${matchesBeforeMatchday.length} completed matches`);
 
       // Calcola la classifica prima della giornata
-      const standingsBefore = calculateStandingsBeforeMatchday(matchesBeforeMatchday);
+      standingsBefore = calculateStandingsBeforeMatchday(matchesBeforeMatchday);
       console.log(`Standings before matchday ${matchday}:`, standingsBefore.length, 'players');
 
       // Salva la classifica di backup
