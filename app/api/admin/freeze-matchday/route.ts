@@ -184,24 +184,28 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // IMPEDISCI IL CONGELAMENTO DI PARTITE COMPLETATE
+    // IMPEDISCI IL CONGELAMENTO SOLO SE TUTTE LE PARTITE SONO COMPLETATE
     const completedMatches = targetMatches.filter((m: any) => m.status === 'completed');
-    if (completedMatches.length > 0) {
+    const totalMatches = targetMatches.length;
+    
+    console.log(`Matchday ${matchday} analysis: ${completedMatches.length}/${totalMatches} matches completed`);
+    
+    if (completedMatches.length === totalMatches && totalMatches > 0) {
       return NextResponse.json({ 
-        error: `Cannot freeze matchday ${matchday} - it contains ${completedMatches.length} completed matches. Only incomplete matches can be frozen.` 
+        error: `Cannot freeze matchday ${matchday} - all ${totalMatches} matches are completed. Freezing is only allowed when some matches are still incomplete.` 
       }, { status: 400 });
     }
 
-    // Trova le partite da congelare (tutte quelle non completate)
-    const matchesToFreeze = targetMatches.filter((m: any) => m.status !== 'completed');
+    // Trova le partite da congelare (TUTTE le partite della giornata, completate e non)
+    const matchesToFreeze = targetMatches; // Congela tutte le partite della giornata
     
     if (matchesToFreeze.length === 0) {
       return NextResponse.json({ 
-        error: 'Matchday cannot be frozen - no matches to freeze' 
+        error: 'Matchday cannot be frozen - no matches found' 
       }, { status: 400 });
     }
 
-    console.log(`Freezing matchday ${matchday}: ${matchesToFreeze.length} matches to freeze`);
+    console.log(`Freezing matchday ${matchday}: ${matchesToFreeze.length} total matches (${completedMatches.length} completed, ${matchesToFreeze.length - completedMatches.length} incomplete)`);
 
     // CALCOLA LA CLASSIFICA PRIMA DELLA GIORNATA (escludendo le partite di questa giornata)
     let standingsBefore: any[] = [];
@@ -216,10 +220,12 @@ export async function POST(request: NextRequest) {
       console.log(`Calculating standings before matchday ${matchday}: ${matchesBeforeMatchday.length} completed matches`);
 
       // Calcola la classifica prima della giornata
+      console.log('Calling calculateStandingsBeforeMatchday...');
       standingsBefore = calculateStandingsBeforeMatchday(matchesBeforeMatchday);
       console.log(`Standings before matchday ${matchday}:`, standingsBefore.length, 'players');
 
       // Salva la classifica di backup
+      console.log('Saving backup to Firestore...');
       const backupRef = db.collection('standings_backup').doc(`matchday_${matchday}_before`);
       await backupRef.set({
         matchday: matchday,
@@ -231,6 +237,11 @@ export async function POST(request: NextRequest) {
       console.log(`Backup saved for matchday ${matchday}`);
     } catch (backupError) {
       console.error('Error calculating or saving backup:', backupError);
+      console.error('Backup error details:', {
+        message: backupError.message,
+        stack: backupError.stack,
+        name: backupError.name
+      });
       // Continua comunque con il congelamento anche se il backup fallisce
     }
 
@@ -279,8 +290,18 @@ export async function POST(request: NextRequest) {
     });
 
     console.log(`Committing batch update...`);
-    await batch.commit();
-    console.log(`Batch update completed successfully`);
+    try {
+      await batch.commit();
+      console.log(`Batch update completed successfully`);
+    } catch (batchError) {
+      console.error('Error committing batch update:', batchError);
+      console.error('Batch error details:', {
+        message: batchError.message,
+        stack: batchError.stack,
+        name: batchError.name
+      });
+      throw batchError; // Rilancia l'errore per gestirlo nel catch principale
+    }
 
     console.log(`Successfully frozen matchday ${matchday}: ${matchesToFreeze.length} matches frozen`);
 
