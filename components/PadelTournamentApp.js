@@ -317,6 +317,12 @@ export default function PadelTournamentApp() {
         }
         
         console.log('✅ Username aggiornato con successo:', data);
+        
+        // Aggiorna l'username nell'oggetto me per riflettere immediatamente il cambiamento
+        setMe(prev => ({
+          ...prev,
+          username: newUsername
+        }));
       }
       
       setProfileEdit(prev => ({
@@ -1248,7 +1254,7 @@ export default function PadelTournamentApp() {
                 <span className="text-3xl">🎾</span>
               </div>
               <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                {me?.displayName || me?.email || "Giocatore Padel"}
+                {me?.username || me?.displayName || me?.email || "Giocatore Padel"}
               </h2>
               <p className="text-gray-600">Benvenuto nel tuo profilo padel! 🏆</p>
             </div>
