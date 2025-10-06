@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getApps, initializeApp, cert } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { shouldFreezeMatchday, getFrozenMatchdays } from '../../../lib/tournament-phases';
 
 // Funzione per calcolare la classifica prima di una giornata
@@ -275,58 +275,32 @@ export async function POST(request: NextRequest) {
 
       console.log(`Original data for match ${match.id}:`, originalData);
 
-      // Prepara i dati di aggiornamento senza valori null/undefined
+      // Prepara i dati di aggiornamento usando FieldValue.delete() per rimuovere campi
       const updateData: any = {
         status: 'da recuperare',
         frozenAt: new Date(),
-        originalMatchday: matchday
+        originalMatchday: matchday,
+        originalData: originalData
       };
 
-      // Aggiungi originalData solo se non è undefined
-      if (originalData && typeof originalData === 'object') {
-        updateData.originalData = originalData;
-      }
+      // Rimuovi i campi di risultato usando FieldValue.delete()
+      // Questo è il modo corretto per rimuovere campi da Firestore
+      updateData.scoreA = FieldValue.delete();
+      updateData.scoreB = FieldValue.delete();
+      updateData.totalGamesA = FieldValue.delete();
+      updateData.totalGamesB = FieldValue.delete();
+      updateData.set1Games = FieldValue.delete();
+      updateData.set2Games = FieldValue.delete();
+      updateData.set3Games = FieldValue.delete();
+      updateData.completedBy = FieldValue.delete();
+      updateData.completedAt = FieldValue.delete();
 
-      // Rimuovi i campi di risultato solo se esistono e non sono undefined
-      if (match.scoreA !== undefined && match.scoreA !== null) {
-        updateData.scoreA = null;
-      }
-      if (match.scoreB !== undefined && match.scoreB !== null) {
-        updateData.scoreB = null;
-      }
-      if (match.totalGamesA !== undefined && match.totalGamesA !== null) {
-        updateData.totalGamesA = null;
-      }
-      if (match.totalGamesB !== undefined && match.totalGamesB !== null) {
-        updateData.totalGamesB = null;
-      }
-      if (match.set1Games !== undefined && match.set1Games !== null) {
-        updateData.set1Games = null;
-      }
-      if (match.set2Games !== undefined && match.set2Games !== null) {
-        updateData.set2Games = null;
-      }
-      if (match.set3Games !== undefined && match.set3Games !== null) {
-        updateData.set3Games = null;
-      }
-      if (match.completedBy !== undefined && match.completedBy !== null) {
-        updateData.completedBy = null;
-      }
-      if (match.completedAt !== undefined && match.completedAt !== null) {
-        updateData.completedAt = null;
-      }
-
-      console.log(`Update data for match ${match.id}:`, updateData);
-      console.log(`Original match data:`, {
-        scoreA: match.scoreA,
-        scoreB: match.scoreB,
-        totalGamesA: match.totalGamesA,
-        totalGamesB: match.totalGamesB,
-        set1Games: match.set1Games,
-        set2Games: match.set2Games,
-        set3Games: match.set3Games,
-        completedBy: match.completedBy,
-        completedAt: match.completedAt
+      console.log(`Update data for match ${match.id}:`, {
+        status: updateData.status,
+        frozenAt: updateData.frozenAt,
+        originalMatchday: updateData.originalMatchday,
+        originalData: updateData.originalData,
+        fieldsToDelete: ['scoreA', 'scoreB', 'totalGamesA', 'totalGamesB', 'set1Games', 'set2Games', 'set3Games', 'completedBy', 'completedAt']
       });
       
       batch.update(matchRef, updateData);
