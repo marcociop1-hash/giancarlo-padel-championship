@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useMemo } from "react";
 // FIX: Forza rebuild per correggere errore standingA
-import { db } from "../../../lib/firebase";
+import { db, auth } from "../../../lib/firebase";
 import {
   collection,
   getDocs,
@@ -230,10 +230,21 @@ export default function LogPage() {
     
     setSaving(true);
     try {
+      // Ottieni il token di autenticazione Firebase
+      const user = auth.currentUser;
+      if (!user) {
+        alert('Errore: Utente non autenticato');
+        setSaving(false);
+        return;
+      }
+      
+      const token = await user.getIdToken();
+      
       const response = await fetch('/api/matches/update-details', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           matchId: editingMatch.id,
