@@ -4,12 +4,11 @@ import { LogIn, UserPlus, Shield } from 'lucide-react';
 
 const LoginForm = memo(({ onLogin, onRegister, error, loading }) => {
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     password: '',
     isRegistering: false,
     newUser: {
       name: '',
-      email: '',
       username: '',
       password: '',
       confirmPassword: ''
@@ -28,14 +27,14 @@ const LoginForm = memo(({ onLogin, onRegister, error, loading }) => {
   }, []);
 
   const handleLogin = useCallback(() => {
-    if (formData.email && formData.password) {
-      onLogin(formData.email, formData.password);
+    if (formData.username && formData.password) {
+      onLogin(formData.username, formData.password);
     }
-  }, [formData.email, formData.password, onLogin]);
+  }, [formData.username, formData.password, onLogin]);
 
   const handleRegister = useCallback(() => {
-    const { name, email, username, password, confirmPassword } = formData.newUser;
-    if (!name || !email || !username || !password) {
+    const { name, username, password, confirmPassword } = formData.newUser;
+    if (!name || !username || !password) {
       alert('Compila tutti i campi obbligatori');
       return;
     }
@@ -43,7 +42,9 @@ const LoginForm = memo(({ onLogin, onRegister, error, loading }) => {
       alert('Le password non corrispondono');
       return;
     }
-    onRegister(email, password, { name, username });
+    // Per la registrazione, usiamo username@dummy.com come email temporanea
+    const tempEmail = `${username}@dummy.com`;
+    onRegister(tempEmail, password, { name, username });
   }, [formData.newUser, onRegister]);
 
   const toggleForm = useCallback(() => {
@@ -103,19 +104,6 @@ const LoginForm = memo(({ onLogin, onRegister, error, loading }) => {
                 />
               </div>
 
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  Email
-                </label>
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
-                  value={formData.newUser.email}
-                  onChange={(e) => handleNewUserChange('email', e.target.value)}
-                />
-              </div>
 
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700">
@@ -167,16 +155,16 @@ const LoginForm = memo(({ onLogin, onRegister, error, loading }) => {
             // Form di login
             <div className="space-y-4">
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  Email
+                <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                  Username
                 </label>
                 <input
-                  id="email"
-                  type="email"
+                  id="username"
+                  type="text"
                   required
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  value={formData.username}
+                  onChange={(e) => handleInputChange('username', e.target.value)}
                 />
               </div>
 

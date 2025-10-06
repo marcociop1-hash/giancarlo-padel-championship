@@ -134,7 +134,7 @@ export default function PadelTournamentApp() {
 
   // Stati per modifica profilo
   const [profileEdit, setProfileEdit] = useState({
-    newEmail: "",
+    newUsername: "",
     newPassword: "",
     currentPassword: "",
     showForm: false,
@@ -282,17 +282,12 @@ export default function PadelTournamentApp() {
     setProfileEdit(prev => ({ ...prev, loading: true, error: "", success: "" }));
     
     try {
-      const { newEmail, newPassword, currentPassword } = profileEdit;
+      const { newUsername, newPassword, currentPassword } = profileEdit;
       
-      // Se si vuole cambiare email o password, serve la password corrente per la riautenticazione
-      if ((newEmail || newPassword) && currentPassword) {
+      // Se si vuole cambiare password, serve la password corrente per la riautenticazione
+      if (newPassword && currentPassword) {
         const credential = EmailAuthProvider.credential(me.email, currentPassword);
         await reauthenticateWithCredential(me, credential);
-      }
-      
-      // Aggiorna email se fornita
-      if (newEmail && newEmail !== me.email) {
-        await updateEmail(me, newEmail);
       }
       
       // Aggiorna password se fornita
@@ -300,11 +295,18 @@ export default function PadelTournamentApp() {
         await updatePassword(me, newPassword);
       }
       
+      // Aggiorna username nel profilo Firestore se fornito
+      if (newUsername && newUsername !== me.username) {
+        await setDoc(doc(db, 'players', me.uid), {
+          username: newUsername
+        }, { merge: true });
+      }
+      
       setProfileEdit(prev => ({
         ...prev,
         loading: false,
         success: "Profilo aggiornato con successo!",
-        newEmail: "",
+        newUsername: "",
         newPassword: "",
         currentPassword: "",
         showForm: false
@@ -322,7 +324,7 @@ export default function PadelTournamentApp() {
 
   const resetProfileForm = useCallback(() => {
     setProfileEdit({
-      newEmail: "",
+      newUsername: "",
       newPassword: "",
       currentPassword: "",
       showForm: false,
@@ -1291,18 +1293,18 @@ export default function PadelTournamentApp() {
                     onClick={() => setProfileEdit(prev => ({ ...prev, showForm: true }))}
                     className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors"
                   >
-                    Modifica Email e Password
+                    Modifica Username e Password
                   </button>
                 </div>
               ) : (
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email Attuale
+                      Username Attuale
                     </label>
                     <input
-                      type="email"
-                      value={me?.email || ""}
+                      type="text"
+                      value={me?.username || ""}
                       disabled
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
                     />
@@ -1310,13 +1312,13 @@ export default function PadelTournamentApp() {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nuova Email
+                      Nuovo Username
                     </label>
                     <input
-                      type="email"
-                      value={profileEdit.newEmail}
-                      onChange={(e) => setProfileEdit(prev => ({ ...prev, newEmail: e.target.value }))}
-                      placeholder="Inserisci nuova email"
+                      type="text"
+                      value={profileEdit.newUsername}
+                      onChange={(e) => setProfileEdit(prev => ({ ...prev, newUsername: e.target.value }))}
+                      placeholder="Inserisci nuovo username"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                     />
                   </div>
@@ -1350,7 +1352,7 @@ export default function PadelTournamentApp() {
                   <div className="flex gap-3">
                     <button
                       onClick={handleProfileUpdate}
-                      disabled={profileEdit.loading || (!profileEdit.newEmail && !profileEdit.newPassword) || !profileEdit.currentPassword}
+                      disabled={profileEdit.loading || (!profileEdit.newUsername && !profileEdit.newPassword) || !profileEdit.currentPassword}
                       className="flex-1 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       {profileEdit.loading ? "Aggiornamento..." : "Aggiorna Profilo"}
@@ -1365,9 +1367,9 @@ export default function PadelTournamentApp() {
                   </div>
                   
                   <div className="text-xs text-gray-500">
-                    <p>• Per modificare email o password, devi inserire la password attuale</p>
+                    <p>• Per modificare username o password, devi inserire la password attuale</p>
                     <p>• La nuova password deve essere di almeno 6 caratteri</p>
-                    <p>• Puoi modificare solo email, solo password, o entrambe</p>
+                    <p>• Puoi modificare solo username, solo password, o entrambi</p>
                   </div>
                 </div>
               )}

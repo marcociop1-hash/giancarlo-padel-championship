@@ -11,11 +11,11 @@ const Home = memo(() => {
   const [uiLoading, setUiLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleLogin = useCallback(async (email, password) => {
+  const handleLogin = useCallback(async (username, password) => {
     try {
       setError(''); 
       setUiLoading(true);
-      await login(email, password);
+      await login(username, password);
     } catch (e) {
       setError(e?.message || 'Errore di accesso');
     } finally {

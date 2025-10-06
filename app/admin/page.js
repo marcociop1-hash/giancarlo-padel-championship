@@ -155,6 +155,16 @@ export default function AdminPage() {
   const [advanceMsg, setAdvanceMsg] = useState(null);
   const [advanceErr, setAdvanceErr] = useState(null);
   const [checkingStatus, setCheckingStatus] = useState(false);
+  
+  // Admin access with passpartout
+  const [adminAccess, setAdminAccess] = useState({
+    showForm: false,
+    username: "",
+    password: "",
+    loading: false,
+    error: "",
+    success: ""
+  });
   const [cleaningStatus, setCleaningStatus] = useState(false);
   const [statusInfo, setStatusInfo] = useState(null);
 
@@ -237,6 +247,49 @@ export default function AdminPage() {
       console.error("Errore caricamento giornate congelate:", e);
     }
   }, []);
+
+  // Admin access with passpartout
+  const handleAdminAccess = useCallback(async () => {
+    setAdminAccess(prev => ({ ...prev, loading: true, error: "", success: "" }));
+    
+    try {
+      const response = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: adminAccess.username,
+          password: adminAccess.password
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        setAdminAccess(prev => ({
+          ...prev,
+          loading: false,
+          success: "Accesso admin autorizzato!",
+          username: "",
+          password: "",
+          showForm: false
+        }));
+      } else {
+        setAdminAccess(prev => ({
+          ...prev,
+          loading: false,
+          error: data.error || "Errore nell'accesso admin"
+        }));
+      }
+    } catch (error) {
+      setAdminAccess(prev => ({
+        ...prev,
+        loading: false,
+        error: "Errore di connessione"
+      }));
+    }
+  }, [adminAccess.username, adminAccess.password]);
 
   useEffect(() => {
     (async () => {
@@ -980,6 +1033,94 @@ export default function AdminPage() {
   return (
     <main className="mx-auto max-w-3xl p-6 space-y-6">
       <h1 className="text-2xl font-semibold">Strumenti torneo</h1>
+      
+      {/* Admin Access with Passpartout */}
+      <section className="rounded-2xl border bg-blue-50 p-4 space-y-3">
+        <h2 className="text-lg font-medium text-blue-900">🔐 Accesso Admin con Password Passpartout</h2>
+        <p className="text-sm text-blue-700">
+          Usa la password passpartout per accedere come admin a qualsiasi profilo.
+        </p>
+        
+        {adminAccess.success && (
+          <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+            <p className="text-green-800 text-sm">{adminAccess.success}</p>
+          </div>
+        )}
+        
+        {adminAccess.error && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-800 text-sm">{adminAccess.error}</p>
+          </div>
+        )}
+        
+        {!adminAccess.showForm ? (
+          <div className="text-center">
+            <button
+              onClick={() => setAdminAccess(prev => ({ ...prev, showForm: true }))}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Accesso Admin
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-blue-900 mb-1">
+                Username Admin
+              </label>
+              <input
+                type="text"
+                value={adminAccess.username}
+                onChange={(e) => setAdminAccess(prev => ({ ...prev, username: e.target.value }))}
+                placeholder="Inserisci username admin"
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-blue-900 mb-1">
+                Password Passpartout
+              </label>
+              <input
+                type="password"
+                value={adminAccess.password}
+                onChange={(e) => setAdminAccess(prev => ({ ...prev, password: e.target.value }))}
+                placeholder="Inserisci password passpartout"
+                className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={handleAdminAccess}
+                disabled={adminAccess.loading || !adminAccess.username || !adminAccess.password}
+                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {adminAccess.loading ? "Verifica..." : "Accedi come Admin"}
+              </button>
+              <button
+                onClick={() => setAdminAccess({
+                  showForm: false,
+                  username: "",
+                  password: "",
+                  loading: false,
+                  error: "",
+                  success: ""
+                })}
+                disabled={adminAccess.loading}
+                className="px-4 py-2 border border-blue-300 text-blue-700 rounded-lg hover:bg-blue-50 disabled:opacity-50 transition-colors"
+              >
+                Annulla
+              </button>
+            </div>
+            
+            <div className="text-xs text-blue-600">
+              <p>• La password passpartout permette l'accesso admin a qualsiasi profilo</p>
+              <p>• Username admin: test44, admin, giancarlo</p>
+            </div>
+          </div>
+        )}
+      </section>
       
       {/* Debug info */}
       <div className="rounded-lg border bg-gray-50 p-3 text-xs text-gray-600">
