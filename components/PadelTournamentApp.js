@@ -297,9 +297,18 @@ export default function PadelTournamentApp() {
       
       // Aggiorna username nel profilo Firestore se fornito
       if (newUsername && newUsername !== me.username) {
-        await setDoc(doc(db, 'players', me.uid), {
-          username: newUsername
-        }, { merge: true });
+        // Trova il documento del giocatore corrente nella collection players
+        const currentPlayer = players.find(p => p.uid === me.uid || p.id === me.uid);
+        if (currentPlayer) {
+          await setDoc(doc(db, 'players', currentPlayer.id), {
+            username: newUsername
+          }, { merge: true });
+        } else {
+          // Fallback: prova con l'UID diretto
+          await setDoc(doc(db, 'players', me.uid), {
+            username: newUsername
+          }, { merge: true });
+        }
       }
       
       setProfileEdit(prev => ({
@@ -320,7 +329,7 @@ export default function PadelTournamentApp() {
         error: error.message || "Errore nell'aggiornamento del profilo"
       }));
     }
-  }, [me, profileEdit]);
+  }, [me, profileEdit, players]);
 
   const resetProfileForm = useCallback(() => {
     setProfileEdit({
