@@ -171,7 +171,7 @@ export async function POST(req: Request) {
     // Aggiorna la partita
     if (scoreA !== undefined && scoreB !== undefined && status) {
       // Recupero partita - aggiorna risultato e status
-      await db.collection("matches").doc(matchId).update({
+      const updateData: any = {
         scoreA: scoreA,
         scoreB: scoreB,
         status: status,
@@ -181,7 +181,44 @@ export async function POST(req: Request) {
         },
         completedAt: Timestamp.now(),
         updatedAt: Timestamp.now()
-      });
+      };
+      
+      // Aggiungi i game e i set se forniti
+      if (totalGamesA !== undefined) updateData.totalGamesA = totalGamesA;
+      if (totalGamesB !== undefined) updateData.totalGamesB = totalGamesB;
+      if (set1Games) updateData.set1Games = set1Games;
+      if (set2Games) updateData.set2Games = set2Games;
+      if (set3Games) updateData.set3Games = set3Games;
+      
+      await db.collection("matches").doc(matchId).update(updateData);
+      
+      // Se la partita era "da recuperare" e ora è "completed", ripristina i dati originali
+      if (match.status === 'da recuperare' && status === 'completed' && match.originalData) {
+        console.log(`Restoring original data for recovered match ${matchId}`);
+        
+        const originalData = match.originalData;
+        await db.collection("matches").doc(matchId).update({
+          // Ripristina i dati originali
+          status: originalData.status || 'completed',
+          scoreA: originalData.scoreA,
+          scoreB: originalData.scoreB,
+          totalGamesA: originalData.totalGamesA,
+          totalGamesB: originalData.totalGamesB,
+          set1Games: originalData.set1Games,
+          set2Games: originalData.set2Games,
+          set3Games: originalData.set3Games,
+          completedBy: originalData.completedBy,
+          completedAt: originalData.completedAt,
+          confirmedBy: originalData.confirmedBy,
+          confirmedAt: originalData.confirmedAt,
+          restoredAt: new Date(),
+          // Mantieni i campi di congelamento per tracciabilità
+          frozenAt: match.frozenAt,
+          originalMatchday: match.originalMatchday
+        });
+        
+        console.log(`Successfully restored match ${matchId} with original data`);
+      }
     } else {
       // Aggiorna dettagli partita
       const updateData: any = {
