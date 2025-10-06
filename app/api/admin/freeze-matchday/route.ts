@@ -220,9 +220,9 @@ export async function POST(request: NextRequest) {
     
     console.log(`Test match data:`, {
       id: testMatch.id,
-      status: testMatch.status,
-      scoreA: testMatch.scoreA,
-      scoreB: testMatch.scoreB
+      status: (testMatch as any).status,
+      scoreA: (testMatch as any).scoreA,
+      scoreB: (testMatch as any).scoreB
     });
 
     // Test con updateData minimo
