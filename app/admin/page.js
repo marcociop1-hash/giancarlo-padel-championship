@@ -382,15 +382,15 @@ export default function AdminPage() {
       return { valid: false, message: "Una squadra deve aver vinto almeno 6 game" };
     }
 
-    // Regola 3: Se una squadra ha 6 game, l'altra deve averne meno di 6 (massimo 5)
-    if (a === 6 && b >= 6) {
+    // Regola 3: Se una squadra ha 6 game, l'altra deve averne meno di 6 (massimo 5), ma permette 6-7
+    if (a === 6 && b >= 6 && b !== 7) {
       return { valid: false, message: "Se una squadra ha 6 game, l'altra deve averne meno di 6 (massimo 5)" };
     }
-    if (b === 6 && a >= 6) {
+    if (b === 6 && a >= 6 && a !== 7) {
       return { valid: false, message: "Se una squadra ha 6 game, l'altra deve averne meno di 6 (massimo 5)" };
     }
 
-    // Regola 3b: Controlli specifici per 6-5 e 5-6
+    // Regola 3b: Controlli specifici per 6-5 e 5-6 (ma permette 6-7 e 7-6)
     if ((a === 6 && b === 5) || (a === 5 && b === 6)) {
       return { valid: false, message: "6-5 e 5-6 non sono validi. Una squadra deve aver vinto almeno 6 game con l'altra a massimo 4" };
     }
