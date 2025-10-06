@@ -832,7 +832,7 @@ export default function LogPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="scheduled">Scheduled</option>
-                      <option value="confirmed">Confirmed</option>
+                      <option value="completed">Completed</option>
                       <option value="da recuperare">Da recuperare</option>
                     </select>
                   </div>
