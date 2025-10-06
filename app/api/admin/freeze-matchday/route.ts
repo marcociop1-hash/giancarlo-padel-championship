@@ -120,24 +120,34 @@ function adminDb() {
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('=== FREEZE MATCHDAY API CALLED ===');
     const { matchday } = await request.json();
+    console.log('Requested matchday:', matchday);
 
     if (!matchday || typeof matchday !== 'number') {
+      console.log('Invalid matchday parameter:', matchday);
       return NextResponse.json({ error: 'Matchday number is required' }, { status: 400 });
     }
 
+    console.log('Initializing Firebase admin...');
     const db = adminDb();
+    console.log('Firebase admin initialized successfully');
     
     // Cerca tutte le partite del campionato
+    console.log('Querying championship matches...');
     const allMatchesSnapshot = await db.collection('matches')
       .where('phase', '==', 'campionato')
       .get();
 
+    console.log(`Found ${allMatchesSnapshot.docs.length} championship matches`);
+
     if (allMatchesSnapshot.empty) {
+      console.log('No championship matches found');
       return NextResponse.json({ error: 'No championship matches found' }, { status: 404 });
     }
 
     const allMatches = allMatchesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    console.log('All matches loaded:', allMatches.length);
     
     // Se non ci sono partite con matchday specifico, assegna il matchday alle partite senza matchday
     let targetMatches = allMatches.filter((m: any) => m.matchday === matchday);
@@ -193,32 +203,41 @@ export async function POST(request: NextRequest) {
 
     console.log(`Freezing matchday ${matchday}: ${matchesToFreeze.length} matches to freeze`);
 
-    // CALCOLA LA CLASSIFICA PRIMA DELLA GIORNATA (escludendo le partite di questa giornata)
-    const matchesBeforeMatchday = allMatches.filter((m: any) => 
-      m.matchday !== matchday && 
-      m.status === 'completed' &&
-      m.phase === 'campionato'
-    );
+    try {
+      // CALCOLA LA CLASSIFICA PRIMA DELLA GIORNATA (escludendo le partite di questa giornata)
+      const matchesBeforeMatchday = allMatches.filter((m: any) => 
+        m.matchday !== matchday && 
+        m.status === 'completed' &&
+        m.phase === 'campionato'
+      );
 
-    console.log(`Calculating standings before matchday ${matchday}: ${matchesBeforeMatchday.length} completed matches`);
+      console.log(`Calculating standings before matchday ${matchday}: ${matchesBeforeMatchday.length} completed matches`);
 
-    // Calcola la classifica prima della giornata
-    const standingsBefore = calculateStandingsBeforeMatchday(matchesBeforeMatchday);
-    console.log(`Standings before matchday ${matchday}:`, standingsBefore.length, 'players');
+      // Calcola la classifica prima della giornata
+      const standingsBefore = calculateStandingsBeforeMatchday(matchesBeforeMatchday);
+      console.log(`Standings before matchday ${matchday}:`, standingsBefore.length, 'players');
 
-    // Salva la classifica di backup
-    const backupRef = db.collection('standings_backup').doc(`matchday_${matchday}_before`);
-    await backupRef.set({
-      matchday: matchday,
-      standings: standingsBefore,
-      frozenAt: new Date(),
-      matchesCount: matchesBeforeMatchday.length
-    });
+      // Salva la classifica di backup
+      const backupRef = db.collection('standings_backup').doc(`matchday_${matchday}_before`);
+      await backupRef.set({
+        matchday: matchday,
+        standings: standingsBefore,
+        frozenAt: new Date(),
+        matchesCount: matchesBeforeMatchday.length
+      });
+      
+      console.log(`Backup saved for matchday ${matchday}`);
+    } catch (backupError) {
+      console.error('Error calculating or saving backup:', backupError);
+      // Continua comunque con il congelamento anche se il backup fallisce
+    }
 
     // CONGELA TUTTE LE PARTITE DELLA GIORNATA
+    console.log(`Starting batch update for ${matchesToFreeze.length} matches`);
     const batch = db.batch();
     
-    matchesToFreeze.forEach((match: any) => {
+    matchesToFreeze.forEach((match: any, index: number) => {
+      console.log(`Processing match ${index + 1}/${matchesToFreeze.length}: ${match.id}`);
       const matchRef = db.collection('matches').doc(match.id);
       
       // Salva i dati originali per il ripristino
@@ -236,6 +255,8 @@ export async function POST(request: NextRequest) {
         confirmedBy: match.confirmedBy,
         confirmedAt: match.confirmedAt
       };
+
+      console.log(`Original data for match ${match.id}:`, originalData);
 
       batch.update(matchRef, {
         status: 'da recuperare',
@@ -255,7 +276,9 @@ export async function POST(request: NextRequest) {
       });
     });
 
+    console.log(`Committing batch update...`);
     await batch.commit();
+    console.log(`Batch update completed successfully`);
 
     console.log(`Successfully frozen matchday ${matchday}: ${matchesToFreeze.length} matches frozen`);
 
