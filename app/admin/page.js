@@ -305,12 +305,15 @@ export default function AdminPage() {
 
   // Funzione per validare i game (0-7)
   const validateGameValue = (value) => {
+    console.log("🔍 validateGameValue input:", value, "type:", typeof value);
     if (value === "") return "";
     const num = parseInt(value);
+    console.log("🔍 parsed num:", num, "isNaN:", isNaN(num));
     if (isNaN(num)) return "";
     // Limita tra 0 e 7
     if (num < 0) return 0;
     if (num > 7) return 7;
+    console.log("🔍 returning:", num);
     return num;
   };
 
