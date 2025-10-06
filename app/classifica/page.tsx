@@ -76,13 +76,18 @@ export default function Page() {
       {/* LEGENDA */}
       <div className="mt-4 rounded-lg border bg-blue-50 p-4">
         <h3 className="mb-2 font-semibold text-blue-900">�� Legenda Classifica</h3>
-        <div className="grid grid-cols-1 gap-2 text-sm text-blue-800 sm:grid-cols-3">
-          <div><strong>P:</strong> Punti</div>
-          <div><strong>DG:</strong> Differenza Game vinti/persi</div>
+        <div className="grid grid-cols-1 gap-2 text-sm text-blue-800 sm:grid-cols-2 lg:grid-cols-4">
+          <div><strong>P:</strong> Punti (1 per ogni set vinto)</div>
+          <div><strong>DS:</strong> Differenza Set (set vinti - set persi)</div>
+          <div><strong>SV:</strong> Set Vinti</div>
+          <div><strong>SP:</strong> Set Persi</div>
+          <div><strong>GV:</strong> Game Vinti</div>
+          <div><strong>GP:</strong> Game Persi</div>
+          <div><strong>DG:</strong> Differenza Game (game vinti - game persi)</div>
           <div><strong>PG:</strong> Partite Giocate</div>
         </div>
         <div className="mt-2 text-xs text-blue-700">
-          <strong>Ordinamento:</strong> Punti → Differenza Game → Partite Giocate → Nome
+          <strong>Ordinamento:</strong> Punti → Differenza Set → Differenza Game → Partite Giocate → Nome
         </div>
       </div>
 
@@ -112,8 +117,13 @@ export default function Page() {
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold text-emerald-900">#</th>
                   <th className="px-4 py-3 text-left font-semibold text-emerald-900">Giocatore</th>
-                  <th className="px-4 py-3 text-center font-semibold text-emerald-900" title="Punti">P</th>
-                  <th className="px-4 py-3 text-center font-semibold text-emerald-900" title="Differenza Game vinti/persi">DG</th>
+                  <th className="px-4 py-3 text-center font-semibold text-emerald-900" title="Punti (1 per ogni set vinto)">P</th>
+                  <th className="px-4 py-3 text-center font-semibold text-emerald-900" title="Differenza Set (set vinti - set persi)">DS</th>
+                  <th className="px-4 py-3 text-center font-semibold text-emerald-900" title="Set Vinti">SV</th>
+                  <th className="px-4 py-3 text-center font-semibold text-emerald-900" title="Set Persi">SP</th>
+                  <th className="px-4 py-3 text-center font-semibold text-emerald-900" title="Game Vinti">GV</th>
+                  <th className="px-4 py-3 text-center font-semibold text-emerald-900" title="Game Persi">GP</th>
+                  <th className="px-4 py-3 text-center font-semibold text-emerald-900" title="Differenza Game (game vinti - game persi)">DG</th>
                   <th className="px-4 py-3 text-center font-semibold text-emerald-900" title="Partite Giocate">PG</th>
                 </tr>
               </thead>
@@ -133,6 +143,15 @@ export default function Page() {
                     </td>
                     <td className="px-4 py-3 font-medium">{r.name}</td>
                     <td className="px-4 py-3 text-center font-bold text-emerald-700">{r.points}</td>
+                    <td className={`px-4 py-3 text-center font-medium ${
+                      r.setDiff > 0 ? 'text-green-600' : r.setDiff < 0 ? 'text-red-600' : 'text-gray-600'
+                    }`}>
+                      {r.setDiff > 0 ? `+${r.setDiff}` : r.setDiff}
+                    </td>
+                    <td className="px-4 py-3 text-center text-green-600">{r.setsWon}</td>
+                    <td className="px-4 py-3 text-center text-red-600">{r.setsLost}</td>
+                    <td className="px-4 py-3 text-center text-blue-600">{r.gamesWon || 0}</td>
+                    <td className="px-4 py-3 text-center text-orange-600">{r.gamesLost || 0}</td>
                     <td className={`px-4 py-3 text-center font-medium ${
                       (r.gameDiff || 0) > 0 ? 'text-green-600' : (r.gameDiff || 0) < 0 ? 'text-red-600' : 'text-gray-600'
                     }`}>
