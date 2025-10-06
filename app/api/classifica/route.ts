@@ -64,7 +64,7 @@ function calculateStandings(matches: any[]) {
     }
 
     // Salta le partite completate di giornate che hanno recuperi pendenti
-    if (m.status === 'completata' && m.matchday && matchdaysWithRecoveries.has(m.matchday)) {
+    if (m.status === 'completed' && m.matchday && matchdaysWithRecoveries.has(m.matchday)) {
       console.log(`⏸️ Partita ${index + 1} (ID: ${m.id}) saltata: giornata ${m.matchday} ha recuperi pendenti`);
       return;
     }

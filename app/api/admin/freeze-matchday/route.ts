@@ -316,6 +316,22 @@ export async function POST(request: NextRequest) {
 
     console.log(`Individual updates completed: ${successCount} successful, ${errorCount} errors`);
 
+    // FORZA IL REFRESH DELLA CLASSIFICA per rimuovere immediatamente i punti
+    try {
+      console.log('Forcing classifica refresh to remove points from frozen matchday...');
+      const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+      const response = await fetch(`${baseUrl}/api/classifica?refresh=true`);
+      
+      if (response.ok) {
+        console.log('✅ Classifica refresh successful - points should now be removed from frozen matchday');
+      } else {
+        console.error('❌ Classifica refresh failed:', response.status, response.statusText);
+      }
+    } catch (refreshError) {
+      console.error('❌ Error forcing classifica refresh:', refreshError);
+      // Non bloccare il successo del congelamento se il refresh fallisce
+    }
+
     return NextResponse.json({
       success: true,
       message: `Matchday ${matchday} frozen successfully. ${successCount} matches set to recovery status (${matchesWithResults.length} with results reset, ${successCount - matchesWithResults.length} without results). Standings restored to exclude ALL matches from matchday ${matchday}.`,
