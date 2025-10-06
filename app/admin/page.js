@@ -305,6 +305,7 @@ export default function AdminPage() {
 
   // Funzioni per gestire i form delle partite scheduled
   const setScheduledFormField = (matchId, field, value) => {
+    console.log(`🔧 setScheduledFormField: ${matchId}, ${field}, ${value}`);
     setScheduledFormData(prev => ({
       ...prev,
       [matchId]: { ...prev[matchId], [field]: value }
@@ -319,7 +320,11 @@ export default function AdminPage() {
     console.log("📝 Form data:", { place, date, time });
 
     if (!place || !date || !time) {
-      setMsg("Inserisci campo, data e ora per la partita");
+      const missing = [];
+      if (!place) missing.push("campo");
+      if (!date) missing.push("data");
+      if (!time) missing.push("ora");
+      setMsg(`Inserisci: ${missing.join(", ")} per la partita`);
       return;
     }
 
