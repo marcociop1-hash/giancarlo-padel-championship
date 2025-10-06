@@ -207,51 +207,117 @@ export async function POST(request: NextRequest) {
 
     console.log(`Freezing matchday ${matchday}: ${matchesToFreeze.length} total matches (${completedMatches.length} completed, ${matchesToFreeze.length - completedMatches.length} incomplete)`);
 
-    // TEST MINIMO - Solo aggiorna il primo match per testare
-    console.log('=== MINIMAL TEST MODE ===');
-    console.log(`Testing with first match only: ${matchesToFreeze[0]?.id}`);
+    // CALCOLA LA CLASSIFICA PRIMA DELLA GIORNATA (escludendo le partite di questa giornata)
+    let standingsBefore: any[] = [];
     
-    if (matchesToFreeze.length === 0) {
-      return NextResponse.json({ error: 'No matches to freeze' }, { status: 400 });
-    }
-
-    const testMatch = matchesToFreeze[0];
-    const matchRef = db.collection('matches').doc(testMatch.id);
-    
-    console.log(`Test match data:`, {
-      id: testMatch.id,
-      status: (testMatch as any).status,
-      scoreA: (testMatch as any).scoreA,
-      scoreB: (testMatch as any).scoreB
-    });
-
-    // Test con updateData minimo
-    const testUpdateData = {
-      status: 'da recuperare',
-      frozenAt: new Date(),
-      originalMatchday: matchday,
-      testMode: true
-    };
-
-    console.log(`Test update data:`, testUpdateData);
-
     try {
-      await matchRef.update(testUpdateData);
-      console.log(`Test update successful for match ${testMatch.id}`);
-    } catch (updateError) {
-      console.error('Test update failed:', updateError);
-      throw updateError;
+      // CALCOLA LA CLASSIFICA PRIMA DELLA GIORNATA
+      // Esclude TUTTE le partite della giornata (completate e incomplete)
+      const matchesBeforeMatchday = allMatches.filter((m: any) => 
+        m.matchday !== matchday && 
+        m.status === 'completed' &&
+        m.phase === 'campionato'
+      );
+
+      console.log(`Calculating standings before matchday ${matchday}: ${matchesBeforeMatchday.length} completed matches (excluding all matches from matchday ${matchday})`);
+
+      // Calcola la classifica prima della giornata
+      console.log('Calling calculateStandingsBeforeMatchday...');
+      standingsBefore = calculateStandingsBeforeMatchday(matchesBeforeMatchday);
+      console.log(`Standings before matchday ${matchday}:`, standingsBefore.length, 'players');
+
+      // Salva la classifica di backup
+      console.log('Saving backup to Firestore...');
+      const backupRef = db.collection('standings_backup').doc(`matchday_${matchday}_before`);
+      await backupRef.set({
+        matchday: matchday,
+        standings: standingsBefore,
+        frozenAt: new Date(),
+        matchesCount: matchesBeforeMatchday.length,
+        excludedMatchday: matchday,
+        note: `Standings calculated excluding ALL matches from matchday ${matchday}`
+      });
+      
+      console.log(`Backup saved for matchday ${matchday} - standings exclude all matches from this matchday`);
+    } catch (backupError) {
+      console.error('Error calculating or saving backup:', backupError);
+      console.error('Backup error details:', {
+        message: backupError.message,
+        stack: backupError.stack,
+        name: backupError.name
+      });
+      // Continua comunque con il congelamento anche se il backup fallisce
     }
 
-    console.log(`Test mode successful for matchday ${matchday}`);
+    // CONGELA TUTTE LE PARTITE DELLA GIORNATA - USANDO OPERAZIONI SINGOLE
+    console.log(`Starting individual updates for ${matchesToFreeze.length} matches`);
+    
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (let i = 0; i < matchesToFreeze.length; i++) {
+      const match = matchesToFreeze[i];
+      console.log(`Processing match ${i + 1}/${matchesToFreeze.length}: ${match.id}`);
+      
+      try {
+        const matchRef = db.collection('matches').doc(match.id);
+        
+        // Salva i dati originali per il ripristino
+        const originalData = {
+          status: (match as any).status,
+          scoreA: (match as any).scoreA,
+          scoreB: (match as any).scoreB,
+          totalGamesA: (match as any).totalGamesA,
+          totalGamesB: (match as any).totalGamesB,
+          set1Games: (match as any).set1Games,
+          set2Games: (match as any).set2Games,
+          set3Games: (match as any).set3Games,
+          completedBy: (match as any).completedBy,
+          completedAt: (match as any).completedAt,
+          confirmedBy: (match as any).confirmedBy,
+          confirmedAt: (match as any).confirmedAt
+        };
+
+        // Prepara i dati di aggiornamento
+        const updateData: any = {
+          status: 'da recuperare',
+          frozenAt: new Date(),
+          originalMatchday: matchday,
+          originalData: originalData
+        };
+
+        // Rimuovi i campi di risultato usando FieldValue.delete()
+        updateData.scoreA = FieldValue.delete();
+        updateData.scoreB = FieldValue.delete();
+        updateData.totalGamesA = FieldValue.delete();
+        updateData.totalGamesB = FieldValue.delete();
+        updateData.set1Games = FieldValue.delete();
+        updateData.set2Games = FieldValue.delete();
+        updateData.set3Games = FieldValue.delete();
+        updateData.completedBy = FieldValue.delete();
+        updateData.completedAt = FieldValue.delete();
+
+        await matchRef.update(updateData);
+        console.log(`Successfully updated match ${match.id}`);
+        successCount++;
+        
+      } catch (matchError) {
+        console.error(`Error updating match ${match.id}:`, matchError);
+        errorCount++;
+      }
+    }
+
+    console.log(`Individual updates completed: ${successCount} successful, ${errorCount} errors`);
 
     return NextResponse.json({
       success: true,
-      message: `Test mode: Successfully updated first match of matchday ${matchday}. This is a minimal test to isolate the error.`,
-      testMode: true,
-      testMatch: testMatch.id,
+      message: `Matchday ${matchday} frozen successfully. ${successCount} matches set to recovery status. Standings restored to state BEFORE matchday ${matchday} (all matchday ${matchday} results excluded from standings).`,
+      frozenMatches: successCount,
       totalMatches: targetMatches.length,
-      note: `Only first match was updated in test mode`
+      standingsBackup: standingsBefore.length,
+      excludedMatchday: matchday,
+      errors: errorCount,
+      note: `Standings now reflect results before matchday ${matchday} started`
     });
 
   } catch (error) {
