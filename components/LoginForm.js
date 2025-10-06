@@ -89,7 +89,7 @@ const LoginForm = memo(({ onLogin, onRegister, onResetPassword, error, loading }
         <div className="mt-8 space-y-6">
           {formData.showResetPassword ? (
             // Form di reset password
-            <div className="space-y-4">
+            <form onSubmit={(e) => { e.preventDefault(); handleResetPassword(); }} className="space-y-4">
               <div>
                 <label htmlFor="resetEmail" className="block text-sm font-medium text-gray-700">
                   Username o Email
@@ -125,16 +125,17 @@ const LoginForm = memo(({ onLogin, onRegister, onResetPassword, error, loading }
 
               <div className="text-center">
                 <button
+                  type="button"
                   onClick={toggleResetPassword}
                   className="text-sm text-gray-600 hover:text-gray-500"
                 >
                   ← Torna al login
                 </button>
               </div>
-            </div>
+            </form>
           ) : formData.isRegistering ? (
             // Form di registrazione
-            <div className="space-y-4">
+            <form onSubmit={(e) => { e.preventDefault(); handleRegister(); }} className="space-y-4">
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700">
                   Nome completo
@@ -172,6 +173,7 @@ const LoginForm = memo(({ onLogin, onRegister, onResetPassword, error, loading }
                   id="password"
                   type="password"
                   required
+                  autoComplete="new-password"
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
                   value={formData.newUser.password}
                   onChange={(e) => handleNewUserChange('password', e.target.value)}
@@ -186,6 +188,7 @@ const LoginForm = memo(({ onLogin, onRegister, onResetPassword, error, loading }
                   id="confirmPassword"
                   type="password"
                   required
+                  autoComplete="new-password"
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
                   value={formData.newUser.confirmPassword}
                   onChange={(e) => handleNewUserChange('confirmPassword', e.target.value)}
@@ -193,7 +196,7 @@ const LoginForm = memo(({ onLogin, onRegister, onResetPassword, error, loading }
               </div>
 
               <button
-                onClick={handleRegister}
+                type="submit"
                 disabled={loading}
                 className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -209,10 +212,10 @@ const LoginForm = memo(({ onLogin, onRegister, onResetPassword, error, loading }
                   </>
                 )}
               </button>
-            </div>
+            </form>
           ) : (
             // Form di login
-            <div className="space-y-4">
+            <form onSubmit={(e) => { e.preventDefault(); handleLogin(); }} className="space-y-4">
               <div>
                 <label htmlFor="username" className="block text-sm font-medium text-gray-700">
                   Username
@@ -235,6 +238,7 @@ const LoginForm = memo(({ onLogin, onRegister, onResetPassword, error, loading }
                   id="password"
                   type="password"
                   required
+                  autoComplete="current-password"
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
@@ -242,7 +246,7 @@ const LoginForm = memo(({ onLogin, onRegister, onResetPassword, error, loading }
               </div>
 
               <button
-                onClick={handleLogin}
+                type="submit"
                 disabled={loading}
                 className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -258,7 +262,7 @@ const LoginForm = memo(({ onLogin, onRegister, onResetPassword, error, loading }
                   </>
                 )}
               </button>
-            </div>
+            </form>
           )}
 
           <div className="text-center space-y-2">
