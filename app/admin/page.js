@@ -285,21 +285,21 @@ export default function AdminPage() {
   const setSet1Game = (id, team, value) => {
     setSet1Games(prev => ({
       ...prev,
-      [id]: { ...prev[id], [team]: parseInt(value) || 0 }
+      [id]: { ...prev[id], [team]: value === "" ? "" : parseInt(value) || 0 }
     }));
   };
   
   const setSet2Game = (id, team, value) => {
     setSet2Games(prev => ({
       ...prev,
-      [id]: { ...prev[id], [team]: parseInt(value) || 0 }
+      [id]: { ...prev[id], [team]: value === "" ? "" : parseInt(value) || 0 }
     }));
   };
   
   const setSet3Game = (id, team, value) => {
     setSet3Games(prev => ({
       ...prev,
-      [id]: { ...prev[id], [team]: parseInt(value) || 0 }
+      [id]: { ...prev[id], [team]: value === "" ? "" : parseInt(value) || 0 }
     }));
   };
 
@@ -499,7 +499,12 @@ export default function AdminPage() {
     const set2 = set2Games[m.id] || {};
     const set3 = set3Games[m.id] || {};
     
-    if (!set1.teamA || !set1.teamB || !set2.teamA || !set2.teamB || !set3.teamA || !set3.teamB) {
+    if (set1.teamA === undefined || set1.teamA === "" || 
+        set1.teamB === undefined || set1.teamB === "" ||
+        set2.teamA === undefined || set2.teamA === "" || 
+        set2.teamB === undefined || set2.teamB === "" ||
+        set3.teamA === undefined || set3.teamA === "" || 
+        set3.teamB === undefined || set3.teamB === "") {
       return setMsg("Inserisci i game per tutti e 3 i set.");
     }
     
@@ -507,8 +512,8 @@ export default function AdminPage() {
     const winnerTeam = aS > bS ? "A" : "B";
     
     // Calcola game totali
-    const totalGamesA = (set1.teamA || 0) + (set2.teamA || 0) + (set3.teamA || 0);
-    const totalGamesB = (set1.teamB || 0) + (set2.teamB || 0) + (set3.teamB || 0);
+    const totalGamesA = (set1.teamA ?? 0) + (set2.teamA ?? 0) + (set3.teamA ?? 0);
+    const totalGamesB = (set1.teamB ?? 0) + (set2.teamB ?? 0) + (set3.teamB ?? 0);
     
     try {
       await setDoc(
