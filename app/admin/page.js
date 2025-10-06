@@ -596,33 +596,60 @@ export default function AdminPage() {
   }, [supercoppaMatches]);
 
   const freezeMatchday = async (matchday) => {
+    console.log('🧊 === FREEZE MATCHDAY CLIENT START ===');
+    console.log('📤 Sending request to freeze matchday:', matchday);
+    
     setFreezingMatchday(true);
     setFreezeMsg("");
     setFreezeErr("");
     
     try {
+      console.log('🌐 Making API call to /api/admin/freeze-matchday...');
       const response = await fetch('/api/admin/freeze-matchday', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ matchday })
       });
       
-      const data = await response.json();
+      console.log('📡 Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+      
+      let data;
+      try {
+        data = await response.json();
+        console.log('📊 Response data:', data);
+      } catch (jsonError) {
+        console.error('❌ Error parsing JSON response:', jsonError);
+        const textResponse = await response.text();
+        console.log('📄 Raw response text:', textResponse);
+        throw new Error(`Invalid JSON response: ${textResponse}`);
+      }
       
       if (data.success) {
+        console.log('✅ Freeze successful:', data.message);
         setFreezeMsg(data.message);
         // Ricarica i dati
         fetchRecoveryMatches();
         fetchFrozenMatchdays();
         fetchConfirmed();
       } else {
+        console.log('❌ Freeze failed:', data.error);
         setFreezeErr(data.error || 'Errore durante il congelamento');
       }
     } catch (error) {
-      setFreezeErr('Errore di connessione');
-      console.error('Errore congelamento giornata:', error);
+      console.error('💥 Freeze error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+      setFreezeErr(`Errore di connessione: ${error.message}`);
     } finally {
       setFreezingMatchday(false);
+      console.log('🏁 === FREEZE MATCHDAY CLIENT END ===');
     }
   };
 
