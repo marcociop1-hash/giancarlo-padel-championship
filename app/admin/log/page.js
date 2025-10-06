@@ -107,6 +107,23 @@ export default function LogPage() {
   const [standings, setStandings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Stato per il modal di modifica partita
+  const [editingMatch, setEditingMatch] = useState(null);
+  const [editForm, setEditForm] = useState({
+    place: '',
+    date: '',
+    time: '',
+    scoreA: '',
+    scoreB: '',
+    totalGamesA: '',
+    totalGamesB: '',
+    set1Games: { teamA: '', teamB: '' },
+    set2Games: { teamA: '', teamB: '' },
+    set3Games: { teamA: '', teamB: '' },
+    status: 'scheduled'
+  });
+  const [saving, setSaving] = useState(false);
 
   const fetchMatches = useCallback(async () => {
     try {
@@ -161,6 +178,119 @@ export default function LogPage() {
       console.error("❌ Errore caricamento classifica:", e);
     }
   }, []);
+
+  // Funzione per aprire il modal di modifica
+  const openEditModal = useCallback((match) => {
+    setEditingMatch(match);
+    setEditForm({
+      place: match.place || '',
+      date: match.date || '',
+      time: match.time || '',
+      scoreA: match.scoreA !== undefined ? match.scoreA : '',
+      scoreB: match.scoreB !== undefined ? match.scoreB : '',
+      totalGamesA: match.totalGamesA !== undefined ? match.totalGamesA : '',
+      totalGamesB: match.totalGamesB !== undefined ? match.totalGamesB : '',
+      set1Games: {
+        teamA: match.set1Games?.teamA !== undefined ? match.set1Games.teamA : '',
+        teamB: match.set1Games?.teamB !== undefined ? match.set1Games.teamB : ''
+      },
+      set2Games: {
+        teamA: match.set2Games?.teamA !== undefined ? match.set2Games.teamA : '',
+        teamB: match.set2Games?.teamB !== undefined ? match.set2Games.teamB : ''
+      },
+      set3Games: {
+        teamA: match.set3Games?.teamA !== undefined ? match.set3Games.teamA : '',
+        teamB: match.set3Games?.teamB !== undefined ? match.set3Games.teamB : ''
+      },
+      status: match.status || 'scheduled'
+    });
+  }, []);
+
+  // Funzione per chiudere il modal
+  const closeEditModal = useCallback(() => {
+    setEditingMatch(null);
+    setEditForm({
+      place: '',
+      date: '',
+      time: '',
+      scoreA: '',
+      scoreB: '',
+      totalGamesA: '',
+      totalGamesB: '',
+      set1Games: { teamA: '', teamB: '' },
+      set2Games: { teamA: '', teamB: '' },
+      set3Games: { teamA: '', teamB: '' },
+      status: 'scheduled'
+    });
+  }, []);
+
+  // Funzione per salvare le modifiche
+  const saveMatchChanges = useCallback(async () => {
+    if (!editingMatch) return;
+    
+    setSaving(true);
+    try {
+      const response = await fetch('/api/matches/update-details', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          matchId: editingMatch.id,
+          place: editForm.place,
+          date: editForm.date,
+          time: editForm.time,
+          scoreA: editForm.scoreA ? parseInt(editForm.scoreA) : undefined,
+          scoreB: editForm.scoreB ? parseInt(editForm.scoreB) : undefined,
+          status: editForm.status,
+          totalGamesA: editForm.totalGamesA ? parseInt(editForm.totalGamesA) : undefined,
+          totalGamesB: editForm.totalGamesB ? parseInt(editForm.totalGamesB) : undefined,
+          set1Games: {
+            teamA: editForm.set1Games.teamA ? parseInt(editForm.set1Games.teamA) : undefined,
+            teamB: editForm.set1Games.teamB ? parseInt(editForm.set1Games.teamB) : undefined
+          },
+          set2Games: {
+            teamA: editForm.set2Games.teamA ? parseInt(editForm.set2Games.teamA) : undefined,
+            teamB: editForm.set2Games.teamB ? parseInt(editForm.set2Games.teamB) : undefined
+          },
+          set3Games: {
+            teamA: editForm.set3Games.teamA ? parseInt(editForm.set3Games.teamA) : undefined,
+            teamB: editForm.set3Games.teamB ? parseInt(editForm.set3Games.teamB) : undefined
+          }
+        })
+      });
+
+      if (response.ok) {
+        alert('Partita aggiornata con successo!');
+        closeEditModal();
+        fetchMatches(); // Ricarica le partite
+        
+        // Se sono stati modificati i risultati (scoreA, scoreB), aggiorna la classifica
+        if (editForm.scoreA !== '' || editForm.scoreB !== '') {
+          try {
+            console.log('🔄 Aggiornando classifica dopo modifica risultati...');
+            const classificaResponse = await fetch('/api/classifica?refresh=true');
+            if (classificaResponse.ok) {
+              console.log('✅ Classifica aggiornata con successo');
+              fetchStandings(); // Ricarica anche la classifica locale
+            } else {
+              console.warn('⚠️ Errore nell\'aggiornamento della classifica');
+            }
+          } catch (classificaError) {
+            console.error('❌ Errore nell\'aggiornamento della classifica:', classificaError);
+          }
+        }
+      } else {
+        const errorData = await response.json();
+        alert(`Errore: ${errorData.error || 'Errore sconosciuto'}`);
+      }
+    } catch (error) {
+      console.error('Errore nel salvataggio:', error);
+      alert('Errore nel salvataggio delle modifiche');
+    } finally {
+      setSaving(false);
+    }
+  }, [editingMatch, editForm, closeEditModal, fetchMatches]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -499,6 +629,16 @@ export default function LogPage() {
                         </div>
                       )}
                     </div>
+                    
+                    {/* Bottone Modifica */}
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        onClick={() => openEditModal(match)}
+                        className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                      >
+                        ✏️ Modifica
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -615,6 +755,262 @@ export default function LogPage() {
           </div>
         </div>
       </div>
+      
+      {/* Modal di modifica partita */}
+      {editingMatch && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold">Modifica Partita</h2>
+                <button
+                  onClick={closeEditModal}
+                  className="text-gray-500 hover:text-gray-700 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Squadre */}
+                <div className="bg-gray-50 p-3 rounded">
+                  <h3 className="font-medium mb-2">Squadre</h3>
+                  <div className="text-sm">
+                    {teamLabel(editingMatch.teamA, players, standings, editingMatch)} vs {teamLabel(editingMatch.teamB, players, standings, editingMatch)}
+                  </div>
+                </div>
+                
+                {/* Dettagli partita */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Luogo</label>
+                    <input
+                      type="text"
+                      value={editForm.place}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, place: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Campo 1, Campo 2, etc."
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Data</label>
+                    <input
+                      type="date"
+                      value={editForm.date}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, date: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Ora</label>
+                    <input
+                      type="time"
+                      value={editForm.time}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, time: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Status</label>
+                    <select
+                      value={editForm.status}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, status: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="scheduled">Scheduled</option>
+                      <option value="confirmed">Confirmed</option>
+                      <option value="completed">Completed</option>
+                      <option value="da recuperare">Da recuperare</option>
+                    </select>
+                  </div>
+                </div>
+                
+                {/* Risultati */}
+                <div className="border-t pt-4">
+                  <h3 className="font-medium mb-3">Risultati</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Punteggio Squadra A</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="3"
+                        value={editForm.scoreA}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, scoreA: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="0-3"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Punteggio Squadra B</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="3"
+                        value={editForm.scoreB}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, scoreB: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="0-3"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Game totali */}
+                <div className="border-t pt-4">
+                  <h3 className="font-medium mb-3">Game Totali</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Game Squadra A</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={editForm.totalGamesA}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, totalGamesA: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="0"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Game Squadra B</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={editForm.totalGamesB}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, totalGamesB: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Game per set */}
+                <div className="border-t pt-4">
+                  <h3 className="font-medium mb-3">Game per Set</h3>
+                  <div className="space-y-3">
+                    {/* Set 1 */}
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Set 1</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          max="7"
+                          value={editForm.set1Games.teamA}
+                          onChange={(e) => setEditForm(prev => ({ 
+                            ...prev, 
+                            set1Games: { ...prev.set1Games, teamA: e.target.value }
+                          }))}
+                          className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="A"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          max="7"
+                          value={editForm.set1Games.teamB}
+                          onChange={(e) => setEditForm(prev => ({ 
+                            ...prev, 
+                            set1Games: { ...prev.set1Games, teamB: e.target.value }
+                          }))}
+                          className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="B"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Set 2 */}
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Set 2</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          max="7"
+                          value={editForm.set2Games.teamA}
+                          onChange={(e) => setEditForm(prev => ({ 
+                            ...prev, 
+                            set2Games: { ...prev.set2Games, teamA: e.target.value }
+                          }))}
+                          className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="A"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          max="7"
+                          value={editForm.set2Games.teamB}
+                          onChange={(e) => setEditForm(prev => ({ 
+                            ...prev, 
+                            set2Games: { ...prev.set2Games, teamB: e.target.value }
+                          }))}
+                          className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="B"
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Set 3 */}
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Set 3</label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          max="7"
+                          value={editForm.set3Games.teamA}
+                          onChange={(e) => setEditForm(prev => ({ 
+                            ...prev, 
+                            set3Games: { ...prev.set3Games, teamA: e.target.value }
+                          }))}
+                          className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="A"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          max="7"
+                          value={editForm.set3Games.teamB}
+                          onChange={(e) => setEditForm(prev => ({ 
+                            ...prev, 
+                            set3Games: { ...prev.set3Games, teamB: e.target.value }
+                          }))}
+                          className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="B"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Bottoni */}
+              <div className="flex justify-end gap-3 mt-6 pt-4 border-t">
+                <button
+                  onClick={closeEditModal}
+                  disabled={saving}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={saveMatchChanges}
+                  disabled={saving}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {saving ? 'Salvataggio...' : 'Salva Modifiche'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
