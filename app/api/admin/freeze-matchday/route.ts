@@ -275,22 +275,27 @@ export async function POST(request: NextRequest) {
 
       console.log(`Original data for match ${match.id}:`, originalData);
 
-      batch.update(matchRef, {
+      // Prepara i dati di aggiornamento senza valori null/undefined
+      const updateData: any = {
         status: 'da recuperare',
         frozenAt: new Date(),
         originalMatchday: matchday,
-        originalData: originalData, // Salva i dati originali per il ripristino
-        // Rimuovi tutti i dati di risultato
-        scoreA: null,
-        scoreB: null,
-        totalGamesA: null,
-        totalGamesB: null,
-        set1Games: null,
-        set2Games: null,
-        set3Games: null,
-        completedBy: null,
-        completedAt: null
-      });
+        originalData: originalData // Salva i dati originali per il ripristino
+      };
+
+      // Rimuovi i campi di risultato solo se esistono
+      if (match.scoreA !== undefined) updateData.scoreA = null;
+      if (match.scoreB !== undefined) updateData.scoreB = null;
+      if (match.totalGamesA !== undefined) updateData.totalGamesA = null;
+      if (match.totalGamesB !== undefined) updateData.totalGamesB = null;
+      if (match.set1Games !== undefined) updateData.set1Games = null;
+      if (match.set2Games !== undefined) updateData.set2Games = null;
+      if (match.set3Games !== undefined) updateData.set3Games = null;
+      if (match.completedBy !== undefined) updateData.completedBy = null;
+      if (match.completedAt !== undefined) updateData.completedAt = null;
+
+      console.log(`Update data for match ${match.id}:`, updateData);
+      batch.update(matchRef, updateData);
     });
 
     console.log(`Committing batch update...`);
