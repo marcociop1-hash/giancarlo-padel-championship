@@ -382,12 +382,12 @@ export default function AdminPage() {
       return { valid: false, message: "Una squadra deve aver vinto almeno 6 game" };
     }
 
-    // Regola 3: Se una squadra ha 6 game, l'altra deve averne meno di 6
+    // Regola 3: Se una squadra ha 6 game, l'altra deve averne meno di 6 (massimo 5)
     if (a === 6 && b >= 6) {
-      return { valid: false, message: "Se una squadra ha 6 game, l'altra deve averne meno di 6" };
+      return { valid: false, message: "Se una squadra ha 6 game, l'altra deve averne meno di 6 (massimo 5)" };
     }
     if (b === 6 && a >= 6) {
-      return { valid: false, message: "Se una squadra ha 6 game, l'altra deve averne meno di 6" };
+      return { valid: false, message: "Se una squadra ha 6 game, l'altra deve averne meno di 6 (massimo 5)" };
     }
 
     // Regola 4: Se una squadra ha 7 game, l'altra deve averne 5 o 6 (tie-break)
