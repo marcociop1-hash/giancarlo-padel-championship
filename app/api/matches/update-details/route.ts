@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { getApps, initializeApp, cert } from "firebase-admin/app";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
-import { isEmailAdmin, isUsernameAdmin, isAdminPasspartout } from "../../../../lib/admin";
+import { isEmailAdmin } from "../../../../lib/admin";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -92,8 +92,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Email utente non disponibile" }, { status: 400 });
     }
     
-    // Estrai username dall'email per compatibilità
-    const username = userEmail.split('@')[0];
     
     // Parsing del body
     const body = await req.json();
@@ -147,7 +145,7 @@ export async function POST(req: Request) {
     
     // Verifica sempre se l'utente è un giocatore della partita
     const isPlayer = await isPlayerInMatch(db, match, userEmail);
-    const isAdmin = isEmailAdmin(userEmail) || isUsernameAdmin(username);
+    const isAdmin = isEmailAdmin(userEmail);
     
     // Se si sta aggiornando il risultato (recupero partita), l'admin può sempre farlo
     // Altrimenti verifica che l'utente sia uno dei giocatori della partita OPPURE che sia admin
