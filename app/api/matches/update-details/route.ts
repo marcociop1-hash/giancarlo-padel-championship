@@ -95,7 +95,7 @@ export async function POST(req: Request) {
     
     // Parsing del body
     const body = await req.json();
-    const { matchId, place, date, time, scoreA, scoreB, status } = body;
+    const { matchId, place, date, time, scoreA, scoreB, status, totalGamesA, totalGamesB, set1Games, set2Games, set3Games } = body;
     
     // Validazione input
     if (!matchId) {
@@ -191,23 +191,48 @@ export async function POST(req: Request) {
         updatedAt: Timestamp.now()
       };
       
-      // Se è un giocatore che conferma, cambia status a "confirmed"
-      if (isPlayer) {
-        updateData.status = "confirmed";
-        updateData.confirmedBy = {
-          uid: userId,
-          email: decodedToken.email || null
-        };
-        updateData.confirmedAt = Timestamp.now();
+      // Aggiungi i game e i set se forniti
+      if (totalGamesA !== undefined) updateData.totalGamesA = totalGamesA;
+      if (totalGamesB !== undefined) updateData.totalGamesB = totalGamesB;
+      if (set1Games) updateData.set1Games = set1Games;
+      if (set2Games) updateData.set2Games = set2Games;
+      if (set3Games) updateData.set3Games = set3Games;
+      
+      // Usa lo status inviato dal frontend, altrimenti usa "confirmed" come default
+      if (status) {
+        updateData.status = status;
+        if (status === "completed") {
+          updateData.completedBy = {
+            uid: userId,
+            email: decodedToken.email || null
+          };
+          updateData.completedAt = Timestamp.now();
+        } else if (status === "confirmed") {
+          updateData.confirmedBy = {
+            uid: userId,
+            email: decodedToken.email || null
+          };
+          updateData.confirmedAt = Timestamp.now();
+        }
       } else {
-        // Se è admin, cambia status da "scheduled" a "confirmed" per permettere inserimento risultati
-        updateData.status = "confirmed";
-        updateData.confirmedBy = {
-          uid: userId,
-          email: decodedToken.email || null
-        };
-        updateData.confirmedAt = Timestamp.now();
-        updateData.adminConfirmed = true; // Flag per distinguere conferma admin da giocatore
+        // Se è un giocatore che conferma, cambia status a "confirmed"
+        if (isPlayer) {
+          updateData.status = "confirmed";
+          updateData.confirmedBy = {
+            uid: userId,
+            email: decodedToken.email || null
+          };
+          updateData.confirmedAt = Timestamp.now();
+        } else {
+          // Se è admin, cambia status da "scheduled" a "confirmed" per permettere inserimento risultati
+          updateData.status = "confirmed";
+          updateData.confirmedBy = {
+            uid: userId,
+            email: decodedToken.email || null
+          };
+          updateData.confirmedAt = Timestamp.now();
+          updateData.adminConfirmed = true; // Flag per distinguere conferma admin da giocatore
+        }
       }
       
       await db.collection("matches").doc(matchId).update(updateData);
