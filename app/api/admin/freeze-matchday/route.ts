@@ -221,10 +221,10 @@ export async function POST(request: NextRequest) {
 
       console.log(`Calculating standings before matchday ${matchday}: ${matchesBeforeMatchday.length} completed matches (excluding all matches from matchday ${matchday})`);
 
-      // Calcola la classifica prima della giornata
-      console.log('Calling calculateStandingsBeforeMatchday...');
-      standingsBefore = calculateStandingsBeforeMatchday(matchesBeforeMatchday);
-      console.log(`Standings before matchday ${matchday}:`, standingsBefore.length, 'players');
+      // TEST SEMPLIFICATO - Skip calculation for now
+      console.log('=== SKIPPING STANDINGS CALCULATION FOR DEBUG ===');
+      standingsBefore = []; // Empty array for now
+      console.log('Using empty standings array for testing');
 
       // Salva la classifica di backup
       console.log('Saving backup to Firestore...');
@@ -235,7 +235,7 @@ export async function POST(request: NextRequest) {
         frozenAt: new Date(),
         matchesCount: matchesBeforeMatchday.length,
         excludedMatchday: matchday,
-        note: `Standings calculated excluding ALL matches from matchday ${matchday}`
+        note: `Standings calculated excluding ALL matches from matchday ${matchday} (DEBUG MODE)`
       });
       
       console.log(`Backup saved for matchday ${matchday} - standings exclude all matches from this matchday`);
@@ -320,8 +320,18 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error freezing matchday:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('=== ERROR FREEZING MATCHDAY ===');
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    });
+    console.error('Full error object:', error);
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error.message,
+      name: error.name
+    }, { status: 500 });
   }
 }
 
