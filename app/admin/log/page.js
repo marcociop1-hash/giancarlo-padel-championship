@@ -833,7 +833,6 @@ export default function LogPage() {
                     >
                       <option value="scheduled">Scheduled</option>
                       <option value="confirmed">Confirmed</option>
-                      <option value="completed">Completed</option>
                       <option value="da recuperare">Da recuperare</option>
                     </select>
                   </div>
