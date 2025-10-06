@@ -104,7 +104,7 @@ const RootLayout = memo(({ children }) => {
                 </nav>
               )}
               
-              {user ? (
+              {user && (
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="hidden text-sm text-gray-700 sm:block">
                     {user.email}
@@ -116,7 +116,7 @@ const RootLayout = memo(({ children }) => {
                     Logout
                   </button>
                 </div>
-              ) : null}
+              )}
             </div>
           </header>
 
