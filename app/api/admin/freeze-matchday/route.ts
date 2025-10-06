@@ -133,14 +133,6 @@ export async function POST(request: NextRequest) {
     const db = adminDb();
     console.log('Firebase admin initialized successfully');
     
-    // TEST SEMPLIFICATO - RIMUOVI QUESTO DOPO IL DEBUG
-    console.log('=== SIMPLIFIED TEST MODE ===');
-    return NextResponse.json({
-      success: true,
-      message: `Test mode: Would freeze matchday ${matchday}`,
-      testMode: true
-    });
-    
     // Cerca tutte le partite del campionato
     console.log('Querying championship matches...');
     const allMatchesSnapshot = await db.collection('matches')
@@ -219,13 +211,15 @@ export async function POST(request: NextRequest) {
     let standingsBefore: any[] = [];
     
     try {
+      // CALCOLA LA CLASSIFICA PRIMA DELLA GIORNATA
+      // Esclude TUTTE le partite della giornata (completate e incomplete)
       const matchesBeforeMatchday = allMatches.filter((m: any) => 
         m.matchday !== matchday && 
         m.status === 'completed' &&
         m.phase === 'campionato'
       );
 
-      console.log(`Calculating standings before matchday ${matchday}: ${matchesBeforeMatchday.length} completed matches`);
+      console.log(`Calculating standings before matchday ${matchday}: ${matchesBeforeMatchday.length} completed matches (excluding all matches from matchday ${matchday})`);
 
       // Calcola la classifica prima della giornata
       console.log('Calling calculateStandingsBeforeMatchday...');
@@ -239,10 +233,12 @@ export async function POST(request: NextRequest) {
         matchday: matchday,
         standings: standingsBefore,
         frozenAt: new Date(),
-        matchesCount: matchesBeforeMatchday.length
+        matchesCount: matchesBeforeMatchday.length,
+        excludedMatchday: matchday,
+        note: `Standings calculated excluding ALL matches from matchday ${matchday}`
       });
       
-      console.log(`Backup saved for matchday ${matchday}`);
+      console.log(`Backup saved for matchday ${matchday} - standings exclude all matches from this matchday`);
     } catch (backupError) {
       console.error('Error calculating or saving backup:', backupError);
       console.error('Backup error details:', {
@@ -315,10 +311,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `Matchday ${matchday} frozen successfully. ${matchesToFreeze.length} matches set to recovery status. Standings restored to pre-matchday state.`,
+      message: `Matchday ${matchday} frozen successfully. ${matchesToFreeze.length} matches set to recovery status. Standings restored to state BEFORE matchday ${matchday} (all matchday ${matchday} results excluded from standings).`,
       frozenMatches: matchesToFreeze.length,
       totalMatches: targetMatches.length,
-      standingsBackup: standingsBefore.length
+      standingsBackup: standingsBefore.length,
+      excludedMatchday: matchday,
+      note: `Standings now reflect results before matchday ${matchday} started`
     });
 
   } catch (error) {
