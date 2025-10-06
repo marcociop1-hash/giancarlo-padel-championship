@@ -297,13 +297,24 @@ export default function PadelTournamentApp() {
       
       // Aggiorna username nel profilo Firestore se fornito
       if (newUsername && newUsername !== me.username) {
+        console.log('🔍 Debug profilo update:', {
+          meUid: me.uid,
+          meEmail: me.email,
+          playersCount: players.length,
+          players: players.map(p => ({ id: p.id, uid: p.uid, email: p.email, username: p.username }))
+        });
+        
         // Trova il documento del giocatore corrente nella collection players
         const currentPlayer = players.find(p => p.uid === me.uid || p.id === me.uid);
+        console.log('🎯 Player trovato:', currentPlayer);
+        
         if (currentPlayer) {
+          console.log('📝 Aggiornando con ID documento:', currentPlayer.id);
           await setDoc(doc(db, 'players', currentPlayer.id), {
             username: newUsername
           }, { merge: true });
         } else {
+          console.log('⚠️ Player non trovato, provo con UID diretto:', me.uid);
           // Fallback: prova con l'UID diretto
           await setDoc(doc(db, 'players', me.uid), {
             username: newUsername
@@ -1306,7 +1317,7 @@ export default function PadelTournamentApp() {
                   </button>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <form onSubmit={(e) => { e.preventDefault(); handleProfileUpdate(); }} className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Username Attuale
@@ -1384,7 +1395,7 @@ export default function PadelTournamentApp() {
                     <p>• Per cambiare la password è richiesta la password attuale (sicurezza Firebase)</p>
                     <p>• Per cambiare solo l'username non serve la password attuale</p>
                   </div>
-                </div>
+                </form>
               )}
             </div>
 
