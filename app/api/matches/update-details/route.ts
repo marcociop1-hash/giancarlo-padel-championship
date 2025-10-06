@@ -198,11 +198,14 @@ export async function POST(req: Request) {
         };
         updateData.confirmedAt = Timestamp.now();
       } else {
-        // Se è admin, mantiene lo status "scheduled" ma aggiorna i dettagli
-        updateData.updatedBy = {
+        // Se è admin, cambia status da "scheduled" a "confirmed" per permettere inserimento risultati
+        updateData.status = "confirmed";
+        updateData.confirmedBy = {
           uid: userId,
           email: decodedToken.email || null
         };
+        updateData.confirmedAt = Timestamp.now();
+        updateData.adminConfirmed = true; // Flag per distinguere conferma admin da giocatore
       }
       
       await db.collection("matches").doc(matchId).update(updateData);
@@ -210,7 +213,8 @@ export async function POST(req: Request) {
     
     return NextResponse.json({
       ok: true,
-      message: scoreA !== undefined ? "Risultato partita salvato con successo" : "Dettagli partita aggiornati con successo",
+      message: scoreA !== undefined ? "Risultato partita salvato con successo" : 
+               (isPlayer ? "Dettagli partita aggiornati con successo" : "Dettagli partita aggiornati e partita confermata. Ora puoi inserire i risultati."),
       matchId
     });
     

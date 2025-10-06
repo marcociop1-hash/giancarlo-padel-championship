@@ -362,9 +362,10 @@ export default function AdminPage() {
       console.log("📡 Data risposta:", data);
 
       if (response.ok) {
-        setMsg("Dettagli partita aggiornati con successo");
-        // Ricarica le partite scheduled
+        setMsg(data.message || "Dettagli partita aggiornati con successo");
+        // Ricarica sia le partite scheduled che quelle confirmed
         fetchScheduled();
+        fetchConfirmed();
         // Pulisci il form
         setScheduledFormData(prev => {
           const newData = { ...prev };
@@ -1094,7 +1095,7 @@ export default function AdminPage() {
       <section className="rounded-2xl border bg-white p-4 space-y-4">
         <h2 className="text-lg font-medium">Gestione Partite Programmate (Scheduled)</h2>
         <p className="text-sm text-gray-600">
-          Inserisci campo, data e ora per le partite in stato "Programmata". L'admin può aggiornare questi dettagli senza cambiare lo stato della partita.
+          Inserisci campo, data e ora per le partite in stato "Programmata". Dopo l'aggiornamento, la partita passerà automaticamente in stato "Confermata" e potrai inserire i risultati.
         </p>
         <div className="text-xs text-gray-500 mb-2">
           Debug: {scheduledMatches.length} partite scheduled trovate
