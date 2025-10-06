@@ -13,7 +13,7 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { onAuthStateChanged, updatePassword } from "firebase/auth";
+import { onAuthStateChanged, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
 import TournamentBracket from "./TournamentBracket";
 import SupercoppaWinnerBanner from "./SupercoppaWinnerBanner";
 import SupercoppaCompletedBanner from "./SupercoppaCompletedBanner";
@@ -136,6 +136,7 @@ export default function PadelTournamentApp() {
   const [profileEdit, setProfileEdit] = useState({
     newUsername: "",
     newPassword: "",
+    currentPassword: "",
     showForm: false,
     loading: false,
     error: "",
@@ -281,7 +282,13 @@ export default function PadelTournamentApp() {
     setProfileEdit(prev => ({ ...prev, loading: true, error: "", success: "" }));
     
     try {
-      const { newUsername, newPassword } = profileEdit;
+      const { newUsername, newPassword, currentPassword } = profileEdit;
+      
+      // Se si vuole cambiare password, serve la password corrente per la riautenticazione
+      if (newPassword && currentPassword) {
+        const credential = EmailAuthProvider.credential(me.email, currentPassword);
+        await reauthenticateWithCredential(me, credential);
+      }
       
       // Aggiorna password se fornita
       if (newPassword) {
@@ -301,6 +308,7 @@ export default function PadelTournamentApp() {
         success: "Profilo aggiornato con successo!",
         newUsername: "",
         newPassword: "",
+        currentPassword: "",
         showForm: false
       }));
       
@@ -318,6 +326,7 @@ export default function PadelTournamentApp() {
     setProfileEdit({
       newUsername: "",
       newPassword: "",
+      currentPassword: "",
       showForm: false,
       loading: false,
       error: "",
@@ -1327,11 +1336,26 @@ export default function PadelTournamentApp() {
                     />
                   </div>
                   
+                  {profileEdit.newPassword && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Password Attuale (richiesta per cambiare password)
+                      </label>
+                      <input
+                        type="password"
+                        value={profileEdit.currentPassword}
+                        onChange={(e) => setProfileEdit(prev => ({ ...prev, currentPassword: e.target.value }))}
+                        placeholder="Inserisci la tua password attuale"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      />
+                    </div>
+                  )}
+                  
                   
                   <div className="flex gap-3">
                     <button
                       onClick={handleProfileUpdate}
-                      disabled={profileEdit.loading || (!profileEdit.newUsername && !profileEdit.newPassword)}
+                      disabled={profileEdit.loading || (!profileEdit.newUsername && !profileEdit.newPassword) || (profileEdit.newPassword && !profileEdit.currentPassword)}
                       className="flex-1 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       {profileEdit.loading ? "Aggiornamento..." : "Aggiorna Profilo"}
@@ -1348,7 +1372,8 @@ export default function PadelTournamentApp() {
                   <div className="text-xs text-gray-500">
                     <p>• La nuova password deve essere di almeno 6 caratteri</p>
                     <p>• Puoi modificare solo username, solo password, o entrambi</p>
-                    <p>• Non è richiesta la password attuale per confermare le modifiche</p>
+                    <p>• Per cambiare la password è richiesta la password attuale (sicurezza Firebase)</p>
+                    <p>• Per cambiare solo l'username non serve la password attuale</p>
                   </div>
                 </div>
               )}
