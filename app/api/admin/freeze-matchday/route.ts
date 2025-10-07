@@ -171,8 +171,16 @@ export async function POST(request: NextRequest) {
       });
       await updateBatch.commit();
       
-      // Aggiorna targetMatches con le partite appena modificate
-      targetMatches = matchesWithoutMatchday.map(m => ({ ...m, matchday }));
+      // Ricarica le partite dal database per ottenere i dati aggiornati
+      console.log('Reloading matches from database after matchday assignment...');
+      const updatedMatchesSnapshot = await db.collection('matches')
+        .where('phase', '==', 'campionato')
+        .get();
+      
+      const updatedMatches = updatedMatchesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      targetMatches = updatedMatches.filter((m: any) => m.matchday === matchday);
+      
+      console.log(`After reload: found ${targetMatches.length} matches with matchday ${matchday}`);
     }
 
     // Verifica se la giornata ha già partite da recuperare
