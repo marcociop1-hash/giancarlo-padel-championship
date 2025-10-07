@@ -214,6 +214,19 @@ export async function POST(request: NextRequest) {
     // Quando congeli una giornata, devi annullare TUTTI i risultati, anche quelli completati
     const matchesToFreeze = targetMatches; // Congela TUTTE le partite della giornata
     
+    console.log(`=== MATCHES TO FREEZE ANALYSIS ===`);
+    console.log(`Total matches to freeze: ${matchesToFreeze.length}`);
+    matchesToFreeze.forEach((match, index) => {
+      console.log(`Match ${index + 1}:`, {
+        id: match.id,
+        status: match.status,
+        matchday: match.matchday,
+        phase: match.phase,
+        scoreA: match.scoreA,
+        scoreB: match.scoreB
+      });
+    });
+    
     const matchesWithResults = targetMatches.filter((m: any) => {
       const hasResults = (m.scoreA !== undefined && m.scoreA !== null) && 
                         (m.scoreB !== undefined && m.scoreB !== null);
