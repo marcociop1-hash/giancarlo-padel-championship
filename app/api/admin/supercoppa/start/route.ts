@@ -156,11 +156,15 @@ async function generateCampionatoMatch(db: FirebaseFirestore.Firestore) {
  *  - salva in 'standings_campionato' + config.phase = 'campionato-completato'
  *  ========================= */
 async function finalizeCampionato(db: FirebaseFirestore.Firestore) {
+  console.log('🏁 === FINALIZZAZIONE CAMPIONATO INIZIATA ===');
+  
   const snap = await db
     .collection("matches")
     .where("phase", "==", "campionato")
     .where("status", "==", "completed")
     .get();
+    
+  console.log(`📊 Trovate ${snap.size} partite di campionato completate`);
 
   // Usa la stessa logica di calculateStandings per calcolare tutti i dettagli
   const stats = new Map<string, {
@@ -259,6 +263,9 @@ async function finalizeCampionato(db: FirebaseFirestore.Firestore) {
   batch.set(cfgRef, { phase: "campionato-completato", completedAt: Timestamp.now() }, { merge: true });
 
   await batch.commit();
+  
+  console.log(`✅ Classifica congelata salvata con ${items.length} giocatori`);
+  console.log('🏁 === FINALIZZAZIONE CAMPIONATO COMPLETATA ===');
 
   return { count: items.length };
 }
