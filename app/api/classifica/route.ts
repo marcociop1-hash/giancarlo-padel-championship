@@ -57,6 +57,16 @@ function calculateStandings(matches: any[]) {
   });
 
   matches.forEach((m, index) => {
+    console.log(`🔍 Analizzando partita ${index + 1}:`, {
+      id: m.id,
+      status: m.status,
+      scoreA: m.scoreA,
+      scoreB: m.scoreB,
+      teamA: m.teamA,
+      teamB: m.teamB,
+      matchday: m.matchday
+    });
+
     // Salta le partite da recuperare
     if (m.status === 'da recuperare') {
       console.log(`⏸️ Partita ${index + 1} (ID: ${m.id}) saltata: da recuperare`);
@@ -72,6 +82,8 @@ function calculateStandings(matches: any[]) {
     const a = Number(m.scoreA || 0);
     const b = Number(m.scoreB || 0);
     const matchId = m.id || `match_${index}`;
+    
+    console.log(`📊 Partita ${index + 1}: scoreA=${a}, scoreB=${b}`);
     
     // Calcola game totali se disponibili
     const gamesA = Number(m.totalGamesA || 0);
