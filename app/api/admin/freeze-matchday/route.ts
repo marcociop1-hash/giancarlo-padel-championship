@@ -296,6 +296,23 @@ export async function POST(request: NextRequest) {
       try {
         const matchRef = db.collection('matches').doc(match.id);
         
+        // Verifica che la partita esista nel database
+        console.log(`Checking if match ${match.id} exists in database...`);
+        const matchDoc = await matchRef.get();
+        
+        if (!matchDoc.exists) {
+          console.error(`❌ Match ${match.id} does not exist in database!`);
+          errorCount++;
+          continue;
+        }
+        
+        const dbMatchData = matchDoc.data();
+        console.log(`✅ Match ${match.id} exists in database:`, {
+          status: dbMatchData?.status,
+          matchday: dbMatchData?.matchday,
+          phase: dbMatchData?.phase
+        });
+        
         // Salva i dati originali per il ripristino
         const originalData = {
           status: (match as any).status,
