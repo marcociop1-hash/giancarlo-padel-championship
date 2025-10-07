@@ -445,17 +445,41 @@ export default function PadelTournamentApp() {
     });
   }, [calendarBase, statusFilter, search, playersMap]);
 
-  const calendarByDate = useMemo(() => {
+  const calendarByMatchday = useMemo(() => {
     const groups = new Map();
     for (const m of calendarFiltered) {
-      const key = m.date || "Senza data";
+      // Raggruppa per giornata, con gestione speciale per supercoppa
+      let key;
+      if (m.phase === 'supercoppa') {
+        key = m.roundLabel || 'Supercoppa';
+      } else {
+        key = m.matchday ? `Giornata ${m.matchday}` : "Senza giornata";
+      }
+      
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(m);
     }
+    
     return Array.from(groups.entries()).sort((a, b) => {
-      if (a[0] === "Senza data") return -1;
-      if (b[0] === "Senza data") return 1;
-      return (a[0] || "").localeCompare(b[0] || "");
+      // Ordine speciale per supercoppa
+      const supercoppaOrder = ['Quarti di finale', 'Semifinali', 'Finale'];
+      const aIndex = supercoppaOrder.indexOf(a[0]);
+      const bIndex = supercoppaOrder.indexOf(b[0]);
+      
+      if (aIndex !== -1 && bIndex !== -1) {
+        return aIndex - bIndex;
+      }
+      if (aIndex !== -1) return 1; // Supercoppa dopo campionato
+      if (bIndex !== -1) return -1;
+      
+      // Per il campionato, ordina per numero giornata
+      if (a[0] === "Senza giornata") return 1;
+      if (b[0] === "Senza giornata") return -1;
+      
+      // Estrai numero giornata per ordinamento numerico
+      const aNum = parseInt(a[0].replace('Giornata ', '')) || 0;
+      const bNum = parseInt(b[0].replace('Giornata ', '')) || 0;
+      return aNum - bNum;
     });
   }, [calendarFiltered]);
 
@@ -1061,13 +1085,13 @@ export default function PadelTournamentApp() {
               </div>
             </div>
 
-            {/* GRUPPI PER DATA */}
-            {calendarByDate.length ? (
+            {/* GRUPPI PER GIORNATA */}
+            {calendarByMatchday.length ? (
               <div className="space-y-6">
-                {calendarByDate.map(([day, list]) => (
-                  <div key={day}>
+                {calendarByMatchday.map(([matchday, list]) => (
+                  <div key={matchday}>
                     <div className="sticky top-16 z-10 -mx-4 mb-2 bg-white/80 px-4 py-1 text-xs font-semibold text-gray-500 backdrop-blur">
-                      {day === "Senza data" ? "Senza data" : day}
+                      {matchday} ({list.length} partite)
                     </div>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                       {list.map((m) => (
