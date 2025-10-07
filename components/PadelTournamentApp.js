@@ -11,7 +11,7 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { onAuthStateChanged, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
+import { onAuthStateChanged } from "firebase/auth";
 import TournamentBracket from "./TournamentBracket";
 import SupercoppaWinnerBanner from "./SupercoppaWinnerBanner";
 import SupercoppaCompletedBanner from "./SupercoppaCompletedBanner";
@@ -132,16 +132,6 @@ export default function PadelTournamentApp() {
   const [showWinnerBanner, setShowWinnerBanner] = useState(false);
   const [recoveryMatches, setRecoveryMatches] = useState([]);
 
-  // Stati per modifica profilo
-  const [profileEdit, setProfileEdit] = useState({
-    newUsername: "",
-    newPassword: "",
-    currentPassword: "",
-    showForm: false,
-    loading: false,
-    error: "",
-    success: ""
-  });
 
   // Helper per verificare se l'utente è admin
   const isAdmin = useMemo(() => {
@@ -275,89 +265,6 @@ export default function PadelTournamentApp() {
     [me, playersMap]
   );
 
-  // Funzioni per modifica profilo
-  const handleProfileUpdate = useCallback(async () => {
-    if (!me) return;
-    
-    setProfileEdit(prev => ({ ...prev, loading: true, error: "", success: "" }));
-    
-    try {
-      const { newUsername, newPassword, currentPassword } = profileEdit;
-      
-      // Se si vuole cambiare password, serve la password corrente per la riautenticazione
-      if (newPassword && currentPassword) {
-        const credential = EmailAuthProvider.credential(me.email, currentPassword);
-        await reauthenticateWithCredential(me, credential);
-      }
-      
-      // Aggiorna password se fornita
-      if (newPassword) {
-        await updatePassword(me, newPassword);
-      }
-      
-      // Aggiorna username nel profilo Firestore se fornito
-      if (newUsername && newUsername !== me.username) {
-        console.log('🔍 Aggiornando username via API:', { newUsername, currentUsername: me.username });
-        
-        // Ottieni il token di autenticazione
-        const token = await me.getIdToken();
-        
-        // Chiama l'API server-side per aggiornare l'username
-        const response = await fetch('/api/profile/update', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ newUsername })
-        });
-        
-        const data = await response.json();
-        
-        if (!response.ok) {
-          throw new Error(data.error || 'Errore aggiornamento username');
-        }
-        
-        console.log('✅ Username aggiornato con successo:', data);
-        
-        // Aggiorna l'username nell'oggetto me per riflettere immediatamente il cambiamento
-        setMe(prev => ({
-          ...prev,
-          username: newUsername
-        }));
-      }
-      
-      setProfileEdit(prev => ({
-        ...prev,
-        loading: false,
-        success: "Profilo aggiornato con successo!",
-        newUsername: "",
-        newPassword: "",
-        currentPassword: "",
-        showForm: false
-      }));
-      
-    } catch (error) {
-      console.error("Errore aggiornamento profilo:", error);
-      setProfileEdit(prev => ({
-        ...prev,
-        loading: false,
-        error: error.message || "Errore nell'aggiornamento del profilo"
-      }));
-    }
-  }, [me, profileEdit]);
-
-  const resetProfileForm = useCallback(() => {
-    setProfileEdit({
-      newUsername: "",
-      newPassword: "",
-      currentPassword: "",
-      showForm: false,
-      loading: false,
-      error: "",
-      success: ""
-    });
-  }, []);
 
   // liste base - ottimizzate con useMemo e sorting migliorato
   const scheduled = useMemo(
@@ -1285,7 +1192,7 @@ export default function PadelTournamentApp() {
                 <span className="text-3xl">🎾</span>
               </div>
               <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                {me?.name || me?.username || me?.displayName || "Giocatore Padel"}
+                {me?.uid ? (playersMap.get(me.uid)?.name || playersMap.get(me.uid)?.username || "Giocatore Padel") : "Giocatore Padel"}
               </h2>
               <p className="text-gray-600">Benvenuto nel tuo profilo padel! 🏆</p>
             </div>
@@ -1323,117 +1230,6 @@ export default function PadelTournamentApp() {
               </div>
             </div>
 
-            {/* MODIFICA PROFILO */}
-            <div className="bg-white rounded-xl border p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                ⚙️ Modifica Profilo
-              </h3>
-              
-              {profileEdit.success && (
-                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-green-800 text-sm">{profileEdit.success}</p>
-                </div>
-              )}
-              
-              {profileEdit.error && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-red-800 text-sm">{profileEdit.error}</p>
-                </div>
-              )}
-              
-              {!profileEdit.showForm ? (
-                <div className="text-center">
-                  <button
-                    onClick={() => setProfileEdit(prev => ({ ...prev, showForm: true }))}
-                    className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors"
-                  >
-                    Modifica Username e Password
-                  </button>
-                </div>
-              ) : (
-                <form onSubmit={(e) => { e.preventDefault(); handleProfileUpdate(); }} className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Username Attuale
-                    </label>
-                    <input
-                      type="text"
-                      value={me?.username || ""}
-                      disabled
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nuovo Username
-                    </label>
-                    <input
-                      type="text"
-                      value={profileEdit.newUsername}
-                      onChange={(e) => setProfileEdit(prev => ({ ...prev, newUsername: e.target.value }))}
-                      placeholder="Inserisci nuovo username"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nuova Password
-                    </label>
-                    <input
-                      type="password"
-                      value={profileEdit.newPassword}
-                      onChange={(e) => setProfileEdit(prev => ({ ...prev, newPassword: e.target.value }))}
-                      placeholder="Inserisci nuova password (minimo 6 caratteri)"
-                      autoComplete="new-password"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    />
-                  </div>
-                  
-                  {profileEdit.newPassword && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Password Attuale (richiesta per cambiare password)
-                      </label>
-                      <input
-                        type="password"
-                        value={profileEdit.currentPassword}
-                        onChange={(e) => setProfileEdit(prev => ({ ...prev, currentPassword: e.target.value }))}
-                        placeholder="Inserisci la tua password attuale"
-                        autoComplete="current-password"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      />
-                    </div>
-                  )}
-                  
-                  
-                  <div className="flex gap-3">
-                    <button
-                      onClick={handleProfileUpdate}
-                      disabled={profileEdit.loading || (!profileEdit.newUsername && !profileEdit.newPassword) || (profileEdit.newPassword && !profileEdit.currentPassword)}
-                      className="flex-1 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {profileEdit.loading ? "Aggiornamento..." : "Aggiorna Profilo"}
-                    </button>
-                    <button
-                      onClick={resetProfileForm}
-                      disabled={profileEdit.loading}
-                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
-                    >
-                      Annulla
-                    </button>
-                  </div>
-                  
-                  <div className="text-xs text-gray-500">
-                    <p>• La nuova password deve essere di almeno 6 caratteri</p>
-                    <p>• Puoi modificare solo username, solo password, o entrambi</p>
-                    <p>• Per cambiare la password è richiesta la password attuale (sicurezza Firebase)</p>
-                    <p>• Per cambiare solo l'username non serve la password attuale</p>
-                  </div>
-                </form>
-              )}
-            </div>
 
             {/* CONSIGLI PADEL */}
             <div className="bg-white rounded-xl border p-6">
