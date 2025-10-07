@@ -247,42 +247,27 @@ async function generateSupercoppa(db: FirebaseFirestore.Firestore) {
     .sort((a, b) => (a.rank || 0) - (b.rank || 0))
     .slice(0, Math.min(16, standings.length));
 
-  // 4. Crea le coppie bilanciate (1° con 16°, 2° con 15°, 3° con 14°, etc.)
-  const pairs: any[] = [];
-  const half = Math.ceil(topPlayers.length / 2);
-  
-  for (let i = 0; i < half; i++) {
-    const player1 = topPlayers[i]; // 1°, 2°, 3°, 4°, 5°, 6°, 7°, 8°
-    const player2 = topPlayers[topPlayers.length - 1 - i]; // 16°, 15°, 14°, 13°, 12°, 11°, 10°, 9°
-    
-    if (player1 && player2) {
-      pairs.push([player1, player2]);
-    }
-  }
+  // 4. I giocatori sono già ordinati per classifica (1° al 16°)
 
   // 5. Genera tutto l'albero della supercoppa
   const batch = db.batch();
   const matches: any[] = [];
 
-  // OTTAVI DI FINALE (8 partite) - Coppie bilanciate con accoppiamenti random
-  const shuffledPairs = [...pairs].sort(() => Math.random() - 0.5);
-  
-  for (let i = 0; i < shuffledPairs.length; i += 2) {
-    if (i + 1 >= shuffledPairs.length) break;
-    
-    const [pair1Player1, pair1Player2] = shuffledPairs[i];
-    const [pair2Player1, pair2Player2] = shuffledPairs[i + 1];
+  // QUARTI DI FINALE (4 partite) - 4 giocatori per partita
+  for (let i = 0; i < 4; i++) {
+    const startIdx = i * 4;
+    const players = topPlayers.slice(startIdx, startIdx + 4);
     
     const matchDoc = {
       phase: "supercoppa",
       round: 1,
-      roundLabel: "Ottavi di finale",
-      matchNumber: Math.floor(i / 2) + 1,
+      roundLabel: "Quarti di finale",
+      matchNumber: i + 1,
       status: "scheduled",
       createdAt: Timestamp.now(),
-      teamA: [toLight(pair1Player1), toLight(pair1Player2)],
-      teamB: [toLight(pair2Player1), toLight(pair2Player2)],
-      winnerAdvancesTo: `quarter_${Math.floor(i / 2) + 1}`,
+      teamA: [toLight(players[0]), toLight(players[1])],
+      teamB: [toLight(players[2]), toLight(players[3])],
+      winnerAdvancesTo: `semi_${i + 1}`,
     };
 
     const matchRef = db.collection("matches").doc();
@@ -290,38 +275,18 @@ async function generateSupercoppa(db: FirebaseFirestore.Firestore) {
     matches.push({ id: matchRef.id, ...matchDoc });
   }
 
-  // QUARTI DI FINALE (4 partite) - Placeholder
-  for (let i = 1; i <= 4; i++) {
-    const quarterDoc = {
-      phase: "supercoppa",
-      round: 2,
-      roundLabel: "Quarti di finale",
-      matchNumber: i,
-      status: "placeholder",
-      createdAt: Timestamp.now(),
-      teamA: [{ id: null, name: "?" }],
-      teamB: [{ id: null, name: "?" }],
-      winnerAdvancesTo: `semi_${i}`,
-      isPlaceholder: true,
-    };
-
-    const quarterRef = db.collection("matches").doc();
-    batch.set(quarterRef, quarterDoc);
-    matches.push({ id: quarterRef.id, ...quarterDoc });
-  }
-
   // SEMIFINALI (2 partite) - Placeholder
   for (let i = 1; i <= 2; i++) {
     const semiDoc = {
       phase: "supercoppa",
-      round: 3,
+      round: 2,
       roundLabel: "Semifinali",
       matchNumber: i,
       status: "placeholder",
       createdAt: Timestamp.now(),
       teamA: [{ id: null, name: "?" }],
       teamB: [{ id: null, name: "?" }],
-      winnerAdvancesTo: i === 1 ? "final_1" : "final_1",
+      winnerAdvancesTo: "final_1",
       isPlaceholder: true,
     };
 
@@ -333,7 +298,7 @@ async function generateSupercoppa(db: FirebaseFirestore.Firestore) {
   // FINALE (1 partita) - Placeholder
   const finalDoc = {
     phase: "supercoppa",
-    round: 4,
+    round: 3,
     roundLabel: "Finale",
     matchNumber: 1,
     status: "placeholder",
@@ -363,11 +328,9 @@ async function generateSupercoppa(db: FirebaseFirestore.Firestore) {
 
            return {
            created: matches.length,
-           pairs: pairs.length,
            players: topPlayers.length,
            matches: matches,
            breakdown: {
-             ottavi: 8,
              quarti: 4,
              semifinali: 2,
              finale: 1
@@ -391,7 +354,7 @@ export async function GET() {
       currentPhase: cfg?.phase || "campionato",
       canStart: cfg?.phase === "campionato-completato",
       usage: {
-        POST: "Avvia la supercoppa creando l'albero completo: 8 ottavi + 4 quarti + 2 semifinali + 1 finale con coppie bilanciate (1°+16°, 2°+15°, etc.).",
+        POST: "Avvia la supercoppa creando l'albero completo: 4 quarti (4 giocatori per partita) + 2 semifinali + 1 finale.",
       },
     });
   } catch (error: any) {
@@ -408,9 +371,8 @@ export async function POST() {
 
     return NextResponse.json({
       ok: true,
-      message: `Supercoppa avviata con successo! Create ${result.created} partite (8 ottavi + 4 quarti + 2 semifinali + 1 finale).`,
+      message: `Supercoppa avviata con successo! Create ${result.created} partite (4 quarti + 2 semifinali + 1 finale).`,
       created: result.created,
-      pairs: result.pairs,
       players: result.players,
       phase: "supercoppa",
       breakdown: result.breakdown

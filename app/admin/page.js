@@ -155,6 +155,7 @@ export default function AdminPage() {
   const [advancing, setAdvancing] = useState(false);
   const [advanceMsg, setAdvanceMsg] = useState(null);
   const [advanceErr, setAdvanceErr] = useState(null);
+  const [resetting, setResetting] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(false);
   
   // Admin access with passpartout
@@ -1033,6 +1034,25 @@ export default function AdminPage() {
     }
   }
 
+  async function handleResetSupercoppa() {
+    if (!confirm("ATTENZIONE: Stai per resettare completamente la Supercoppa. Tutte le partite e i progressi verranno cancellati. Sei sicuro?")) return;
+    setResetting(true);
+    try {
+      const res = await fetch('/api/admin/supercoppa/reset', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Errore reset');
+      setMsg('Supercoppa resettata con successo. Il torneo è tornato alla fase campionato.');
+      // Ricarica la pagina per aggiornare lo stato
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    } catch (e) {
+      setErr(e.message || String(e));
+    } finally {
+      setResetting(false);
+    }
+  }
+
   async function handleCheckStatus() {
     setCheckingStatus(true);
     try {
@@ -1872,13 +1892,23 @@ export default function AdminPage() {
             Avanza automaticamente i vincitori ai round successivi.
           </p>
 
-          <button
-            onClick={handleAdvanceSupercoppa}
-            disabled={advancing}
-            className={`rounded-lg px-4 py-2 text-white ${advancing ? 'bg-purple-400' : 'bg-purple-600 hover:bg-purple-700'}`}
-          >
-            {advancing ? 'Avanzamento…' : 'Avanza Vincitori'}
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={handleAdvanceSupercoppa}
+              disabled={advancing}
+              className={`rounded-lg px-4 py-2 text-white ${advancing ? 'bg-purple-400' : 'bg-purple-600 hover:bg-purple-700'}`}
+            >
+              {advancing ? 'Avanzamento…' : 'Avanza Vincitori'}
+            </button>
+
+            <button
+              onClick={handleResetSupercoppa}
+              disabled={resetting}
+              className={`rounded-lg px-4 py-2 text-white ${resetting ? 'bg-red-400' : 'bg-red-600 hover:bg-red-700'}`}
+            >
+              {resetting ? 'Reset…' : 'Resetta Supercoppa'}
+            </button>
+          </div>
 
           {advanceMsg && <div className="mt-3 text-sm text-emerald-700">{advanceMsg}</div>}
           {advanceErr && <div className="mt-3 text-sm text-red-600">Errore: {advanceErr}</div>}
