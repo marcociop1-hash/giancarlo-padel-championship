@@ -150,7 +150,136 @@ async function generateCampionatoMatch(db: FirebaseFirestore.Firestore) {
 }
 
 /** =========================
- *  CALCOLO CLASSIFICA CAMPIONATO
+ *  CONGELAMENTO CLASSIFICA ATTUALE
+ *  - Calcola la classifica attuale con tutti i dettagli
+ *  - La blocca in 'standings_campionato'
+ *  - Cambia fase a 'supercoppa'
+ *  ========================= */
+async function freezeCurrentStandings(db: FirebaseFirestore.Firestore) {
+  console.log('🧊 === CONGELAMENTO CLASSIFICA ===');
+  
+  // Carica tutte le partite completate (escludendo supercoppa)
+  const snap = await db
+    .collection("matches")
+    .where("status", "==", "completed")
+    .get();
+    
+  console.log(`📊 Trovate ${snap.size} partite completate`);
+  
+  // Filtra solo le partite di campionato (esclude supercoppa)
+  const campionatoMatches = snap.docs
+    .map(doc => ({ id: doc.id, ...doc.data() }))
+    .filter(match => (match as any).phase !== 'supercoppa');
+    
+  console.log(`📊 Filtrate ${campionatoMatches.length} partite di campionato`);
+
+  // Calcola la classifica completa
+  const stats = new Map<string, {
+    name: string; 
+    points: number; 
+    setsWon: number; 
+    setsLost: number; 
+    played: number;
+    gamesWon: number;
+    gamesLost: number;
+  }>();
+
+  const ensure = (id: string, name: string) => {
+    if (!stats.has(id)) {
+      stats.set(id, { name, points: 0, setsWon: 0, setsLost: 0, played: 0, gamesWon: 0, gamesLost: 0 });
+    }
+    return stats.get(id)!;
+  };
+
+  campionatoMatches.forEach((m) => {
+    const a = Number((m as any).scoreA || 0);
+    const b = Number((m as any).scoreB || 0);
+    
+    // Calcola game totali se disponibili
+    const gamesA = Number((m as any).totalGamesA || 0);
+    const gamesB = Number((m as any).totalGamesB || 0);
+    
+    // Team A
+    if ((m as any).teamA && Array.isArray((m as any).teamA)) {
+      (m as any).teamA.forEach((player: any) => {
+        if (player && player.id) {
+          const s = ensure(player.id, player.name);
+          s.played += 1;
+          s.points += a; // Punti = set vinti
+          s.setsWon += a;
+          s.setsLost += b;
+          s.gamesWon += gamesA;
+          s.gamesLost += gamesB;
+        }
+      });
+    }
+    
+    // Team B
+    if ((m as any).teamB && Array.isArray((m as any).teamB)) {
+      (m as any).teamB.forEach((player: any) => {
+        if (player && player.id) {
+          const s = ensure(player.id, player.name);
+          s.played += 1;
+          s.points += b; // Punti = set vinti
+          s.setsWon += b;
+          s.setsLost += a;
+          s.gamesWon += gamesB;
+          s.gamesLost += gamesA;
+        }
+      });
+    }
+  });
+
+  const items = Array.from(stats.entries()).map(([playerId, s]) => ({
+    playerId,
+    name: s.name,
+    points: s.points,
+    setsWon: s.setsWon,
+    setsLost: s.setsLost,
+    setDiff: s.setsWon - s.setsLost,
+    gamesWon: s.gamesWon,
+    gamesLost: s.gamesLost,
+    gameDiff: s.gamesWon - s.gamesLost,
+    played: s.played,
+    wins: 0
+  }));
+
+  items.sort((x, y) => {
+    if (y.points !== x.points) return y.points - x.points;
+    if (y.setDiff !== x.setDiff) return y.setDiff - x.setDiff;
+    if (y.gameDiff !== x.gameDiff) return y.gameDiff - x.gameDiff;
+    if (x.played !== y.played) return x.played - y.played;
+    return x.name.localeCompare(y.name);
+  });
+
+  // Salva la classifica congelata
+  const batch = db.batch();
+  const col = db.collection("standings_campionato");
+  
+  // Svuota standings esistenti
+  const old = await col.get();
+  old.forEach((d) => batch.delete(d.ref));
+
+  items.forEach((it, idx) => {
+    if (!it.playerId) return;
+    const ref = col.doc(it.playerId);
+    batch.set(ref, { ...it, rank: idx + 1, frozenAt: Timestamp.now() });
+  });
+
+  // Cambia fase a supercoppa
+  const cfgRef = db.collection("config").doc("tournament");
+  batch.set(cfgRef, { phase: "supercoppa", frozenAt: Timestamp.now() }, { merge: true });
+
+  await batch.commit();
+  
+  console.log(`✅ Classifica congelata con ${items.length} giocatori`);
+  console.log('🧊 === CONGELAMENTO COMPLETATO ===');
+
+  return { count: items.length };
+}
+
+/** =========================
+ *  CALCOLO CLASSIFICA CAMPIONATO (DEPRECATO)
  *  - somma punti di squadra a ogni giocatore (scoreA/scoreB)
  *  - conteggia vittorie (winnerTeam)
  *  - salva in 'standings_campionato' + config.phase = 'campionato-completato'
@@ -274,17 +403,13 @@ async function finalizeCampionato(db: FirebaseFirestore.Firestore) {
  *  GENERAZIONE SUPERCOPPA PADEL (2vs2) - ALBERO COMPLETO
  *  ========================= */
 async function generateSupercoppa(db: FirebaseFirestore.Firestore) {
-  // 1. Verifica che il campionato sia completato e blocca la classifica se necessario
-  const cfgSnap = await db.collection("config").doc("tournament").get();
-  const cfg = cfgSnap.exists ? (cfgSnap.data() as any) : {};
+  console.log('🏁 === ATTIVAZIONE SUPERCOPPA ===');
   
-  if (cfg?.phase !== "campionato-completato") {
-    // Se il campionato non è ancora completato, finalizzalo e blocca la classifica
-    console.log('🏁 Finalizzando campionato e bloccando classifica...');
-    await finalizeCampionato(db);
-  }
+  // 1. Calcola e blocca la classifica attuale del campionato
+  console.log('📊 Calcolando e bloccando classifica attuale...');
+  await freezeCurrentStandings(db);
 
-  // 2. Carica la classifica congelata del campionato
+  // 2. Carica la classifica congelata appena creata
   const standingsSnap = await db.collection("standings_campionato").get();
   const standings = standingsSnap.docs.map((d) => ({
     id: d.id,
@@ -366,16 +491,7 @@ async function generateSupercoppa(db: FirebaseFirestore.Firestore) {
   batch.set(finalRef, finalDoc);
   matches.push({ id: finalRef.id, ...finalDoc });
 
-  // 6. Aggiorna lo stato del torneo
-  batch.set(
-    db.collection("config").doc("tournament"),
-    { 
-      phase: "supercoppa",
-      supercoppaStartedAt: Timestamp.now(),
-      totalMatches: matches.length
-    },
-    { merge: true }
-  );
+  // 6. Lo stato del torneo è già stato aggiornato a "supercoppa" in freezeCurrentStandings
 
   await batch.commit();
 
