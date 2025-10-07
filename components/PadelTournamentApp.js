@@ -119,7 +119,7 @@ StatusBadge.displayName = 'StatusBadge';
    Componente principale con TAB
    ============================ */
 export default function PadelTournamentApp() {
-  const [tab, setTab] = useState("calendario");
+  const [tab, setTab] = useState("mie");
   const [me, setMe] = useState(null);
   const [players, setPlayers] = useState([]);
   const [matches, setMatches] = useState([]);
