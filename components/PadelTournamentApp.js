@@ -1285,7 +1285,7 @@ export default function PadelTournamentApp() {
                 <span className="text-3xl">🎾</span>
               </div>
               <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                {me?.username || me?.displayName || "Giocatore Padel"}
+                {me?.name || me?.username || me?.displayName || "Giocatore Padel"}
               </h2>
               <p className="text-gray-600">Benvenuto nel tuo profilo padel! 🏆</p>
             </div>
