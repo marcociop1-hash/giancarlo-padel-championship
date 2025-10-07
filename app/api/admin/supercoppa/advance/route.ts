@@ -75,16 +75,20 @@ async function advanceWinners(db: FirebaseFirestore.Firestore) {
   const batch = db.batch();
   let updatedMatches = 0;
 
-           // Per ogni round (eccetto l'ultimo), popola i placeholder del round successivo
-         for (let currentRound = 1; currentRound <= 1; currentRound++) {
+  // Per ogni round (eccetto l'ultimo), popola i placeholder del round successivo
+  const maxRound = Math.max(...Array.from(rounds.keys()));
+  
+  for (let currentRound = 1; currentRound < maxRound; currentRound++) {
     const currentMatches = rounds.get(currentRound) || [];
-    const completedMatches = currentMatches.filter(m => m.status === "completed" && m.winnerTeam);
+    const completedMatches = currentMatches.filter(m => m.status === "completed" && m.scoreA !== undefined && m.scoreB !== undefined);
     
     if (completedMatches.length === 0) continue;
 
+    console.log(`🔄 Processando round ${currentRound}: ${completedMatches.length} partite completate`);
+
     // Raggruppa i team vincitori
     const winningTeams = completedMatches.map(match => {
-      const winnerTeam = match.winnerTeam === "A" ? match.teamA : match.teamB;
+      const winnerTeam = match.scoreA > match.scoreB ? match.teamA : match.teamB;
       return {
         team: winnerTeam,
         matchNumber: match.matchNumber,
@@ -95,6 +99,8 @@ async function advanceWinners(db: FirebaseFirestore.Firestore) {
     // Popola i placeholder del round successivo
     const nextRound = currentRound + 1;
     const nextRoundMatches = rounds.get(nextRound) || [];
+    
+    console.log(`📋 Round ${nextRound}: ${nextRoundMatches.length} partite (${nextRoundMatches.filter(m => m.isPlaceholder).length} placeholder)`);
     
     for (let i = 0; i < winningTeams.length; i += 2) {
       if (i + 1 >= winningTeams.length) break;
@@ -108,6 +114,8 @@ async function advanceWinners(db: FirebaseFirestore.Firestore) {
       );
       
       if (placeholderMatch && team1.team && team2.team) {
+        console.log(`✅ Aggiornando placeholder ${placeholderMatch.id} con team ${team1.team.map(p => p.name).join('+')} vs ${team2.team.map(p => p.name).join('+')}`);
+        
         // Aggiorna il placeholder con i team reali
         batch.update(db.collection("matches").doc(placeholderMatch.id), {
           teamA: team1.team.map(toLight),
