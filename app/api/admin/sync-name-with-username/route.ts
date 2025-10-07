@@ -43,6 +43,7 @@ export async function POST() {
       newName: string;
       success: boolean;
       error?: string;
+      note?: string;
     }> = [];
     
     for (const player of players) {
