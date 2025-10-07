@@ -24,6 +24,65 @@ function initAdmin() {
   return { db: getFirestore(), auth: getAuth() };
 }
 
+// Helper per avanzare il vincitore nella supercoppa
+async function advanceSupercoppaWinner(db: FirebaseFirestore.Firestore, match: any, scoreA: number, scoreB: number) {
+  try {
+    // Determina il vincitore
+    const winnerTeam = scoreA > scoreB ? 'teamA' : 'teamB';
+    const winnerPlayers = match[winnerTeam];
+    
+    if (!winnerPlayers || !Array.isArray(winnerPlayers)) {
+      console.error('❌ Vincitore non valido per la partita supercoppa');
+      return;
+    }
+    
+    console.log(`🏆 Vincitore: ${winnerPlayers.map(p => p.name).join(' + ')}`);
+    
+    // Trova la partita successiva
+    const nextMatchQuery = await db.collection("matches")
+      .where("phase", "==", "supercoppa")
+      .where("status", "==", "placeholder")
+      .where("winnerAdvancesTo", "==", match.winnerAdvancesTo)
+      .limit(1)
+      .get();
+    
+    if (nextMatchQuery.empty) {
+      console.log('🏁 Nessuna partita successiva trovata - potrebbe essere la finale');
+      return;
+    }
+    
+    const nextMatch = nextMatchQuery.docs[0];
+    const nextMatchData = nextMatch.data();
+    
+    // Determina se il vincitore va in teamA o teamB della partita successiva
+    const nextMatchRef = nextMatch.ref;
+    const updateData: any = {};
+    
+    // Controlla se teamA o teamB sono vuoti (placeholder)
+    const isTeamAEmpty = nextMatchData.teamA && nextMatchData.teamA[0] && nextMatchData.teamA[0].id === null;
+    const isTeamBEmpty = nextMatchData.teamB && nextMatchData.teamB[0] && nextMatchData.teamB[0].id === null;
+    
+    if (isTeamAEmpty) {
+      updateData.teamA = winnerPlayers;
+      updateData.status = isTeamBEmpty ? "placeholder" : "scheduled";
+    } else if (isTeamBEmpty) {
+      updateData.teamB = winnerPlayers;
+      updateData.status = "scheduled";
+    } else {
+      console.error('❌ Entrambi i team della partita successiva sono già occupati');
+      return;
+    }
+    
+    // Aggiorna la partita successiva
+    await nextMatchRef.update(updateData);
+    
+    console.log(`✅ Vincitore avanzato alla partita successiva: ${nextMatchData.roundLabel}`);
+    
+  } catch (error) {
+    console.error('❌ Errore nell\'avanzamento del vincitore supercoppa:', error);
+  }
+}
+
 // Helper per verificare se un utente è uno dei giocatori della partita
 async function isPlayerInMatch(db: FirebaseFirestore.Firestore, match: any, userEmail: string): Promise<boolean> {
   if (!match || !userEmail) return false;
@@ -289,6 +348,12 @@ export async function POST(req: Request) {
       });
       
       await db.collection("matches").doc(matchId).update(cleanUpdateData);
+      
+      // Se è una partita di supercoppa completata, avanza automaticamente il vincitore
+      if (match.phase === 'supercoppa' && status === 'completed' && scoreA !== undefined && scoreB !== undefined) {
+        console.log(`🏆 Supercoppa: Partita ${matchId} completata, avanzando vincitore...`);
+        await advanceSupercoppaWinner(db, match, scoreA, scoreB);
+      }
     }
     
     return NextResponse.json({

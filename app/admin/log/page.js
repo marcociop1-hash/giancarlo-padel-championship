@@ -319,27 +319,48 @@ export default function LogPage() {
     loadData();
   }, [fetchMatches, fetchPlayers, fetchStandings]);
 
-  // Raggruppa le partite per giornata
+  // Raggruppa le partite per giornata (campionato) o round (supercoppa)
   const matchesByMatchday = useMemo(() => {
     const grouped = {};
     matches.forEach(match => {
-      const matchday = match.matchday || 'N/A';
-      if (!grouped[matchday]) {
-        grouped[matchday] = [];
+      let groupKey;
+      
+      if (match.phase === 'supercoppa') {
+        // Per la supercoppa, raggruppa per roundLabel
+        groupKey = match.roundLabel || 'Supercoppa';
+      } else {
+        // Per il campionato, usa matchday
+        groupKey = match.matchday || 'N/A';
       }
-      grouped[matchday].push(match);
+      
+      if (!grouped[groupKey]) {
+        grouped[groupKey] = [];
+      }
+      grouped[groupKey].push(match);
     });
     
-    // Ordina le giornate numericamente
-    const sortedMatchdays = Object.keys(grouped).sort((a, b) => {
+    // Ordina le giornate/round
+    const sortedKeys = Object.keys(grouped).sort((a, b) => {
+      // Ordine speciale per supercoppa
+      const supercoppaOrder = ['Quarti di finale', 'Semifinali', 'Finale'];
+      const aIndex = supercoppaOrder.indexOf(a);
+      const bIndex = supercoppaOrder.indexOf(b);
+      
+      if (aIndex !== -1 && bIndex !== -1) {
+        return aIndex - bIndex;
+      }
+      if (aIndex !== -1) return 1; // Supercoppa dopo campionato
+      if (bIndex !== -1) return -1;
+      
+      // Per il campionato, ordina numericamente
       if (a === 'N/A') return 1;
       if (b === 'N/A') return -1;
       return parseInt(a) - parseInt(b);
     });
     
     const result = {};
-    sortedMatchdays.forEach(matchday => {
-      result[matchday] = grouped[matchday];
+    sortedKeys.forEach(key => {
+      result[key] = grouped[key];
     });
     
     return result;
@@ -565,7 +586,7 @@ export default function LogPage() {
             <div key={matchday} className="bg-white rounded-lg shadow-sm border overflow-hidden">
               <div className="bg-emerald-50 px-4 py-3 border-b">
                 <h3 className="font-semibold text-emerald-900">
-                  Giornata {matchday}
+                  {matchday.includes('Giornata') ? matchday : matchday}
                   <span className="ml-2 text-sm font-normal text-emerald-700">
                     ({matchList.length} partite)
                   </span>
