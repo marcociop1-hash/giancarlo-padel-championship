@@ -164,12 +164,18 @@ export async function POST(request: NextRequest) {
       
       // Assegna il matchday alle partite che non ce l'hanno
       console.log(`Found ${matchesWithoutMatchday.length} matches without matchday, assigning matchday ${matchday}...`);
+      console.log('Match IDs to update:', matchesWithoutMatchday.map(m => m.id));
+      
       const updateBatch = db.batch();
       matchesWithoutMatchday.forEach((match: any) => {
         const matchRef = db.collection('matches').doc(match.id);
+        console.log(`Adding to batch: match ${match.id} -> matchday ${matchday}`);
         updateBatch.update(matchRef, { matchday: matchday });
       });
+      
+      console.log('Committing batch update...');
       await updateBatch.commit();
+      console.log('Batch update committed successfully');
       
       // Ricarica le partite dal database per ottenere i dati aggiornati
       console.log('Reloading matches from database after matchday assignment...');
