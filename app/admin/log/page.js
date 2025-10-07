@@ -190,8 +190,6 @@ export default function LogPage() {
       time: match.time || '',
       scoreA: match.scoreA !== undefined ? match.scoreA : '',
       scoreB: match.scoreB !== undefined ? match.scoreB : '',
-      totalGamesA: match.totalGamesA !== undefined ? match.totalGamesA : '',
-      totalGamesB: match.totalGamesB !== undefined ? match.totalGamesB : '',
       set1Games: {
         teamA: match.set1Games?.teamA !== undefined ? match.set1Games.teamA : '',
         teamB: match.set1Games?.teamB !== undefined ? match.set1Games.teamB : ''
@@ -217,8 +215,6 @@ export default function LogPage() {
       time: '',
       scoreA: '',
       scoreB: '',
-      totalGamesA: '',
-      totalGamesB: '',
       set1Games: { teamA: '', teamB: '' },
       set2Games: { teamA: '', teamB: '' },
       set3Games: { teamA: '', teamB: '' },
@@ -256,8 +252,11 @@ export default function LogPage() {
           ...(editForm.scoreA && { scoreA: parseInt(editForm.scoreA) }),
           ...(editForm.scoreB && { scoreB: parseInt(editForm.scoreB) }),
           status: "completed", // Forza sempre completed quando si modifica dal log
-          ...(editForm.totalGamesA && { totalGamesA: parseInt(editForm.totalGamesA) }),
-          ...(editForm.totalGamesB && { totalGamesB: parseInt(editForm.totalGamesB) }),
+          // Calcola automaticamente i game totali dai set
+          ...(editForm.set1Games.teamA || editForm.set1Games.teamB || editForm.set2Games.teamA || editForm.set2Games.teamB || editForm.set3Games.teamA || editForm.set3Games.teamB ? {
+            totalGamesA: (parseInt(editForm.set1Games.teamA) || 0) + (parseInt(editForm.set2Games.teamA) || 0) + (parseInt(editForm.set3Games.teamA) || 0),
+            totalGamesB: (parseInt(editForm.set1Games.teamB) || 0) + (parseInt(editForm.set2Games.teamB) || 0) + (parseInt(editForm.set3Games.teamB) || 0)
+          } : {}),
           ...(editForm.set1Games.teamA || editForm.set1Games.teamB ? {
             set1Games: {
               ...(editForm.set1Games.teamA && { teamA: parseInt(editForm.set1Games.teamA) }),
@@ -872,32 +871,32 @@ export default function LogPage() {
                   </div>
                 </div>
                 
-                {/* Game totali */}
+                {/* Game totali - Calcolati automaticamente */}
                 <div className="border-t pt-4">
-                  <h3 className="font-medium mb-3">Game Totali</h3>
+                  <h3 className="font-medium mb-3">Game Totali (Calcolati automaticamente)</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium mb-1">Game Squadra A</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={editForm.totalGamesA}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, totalGamesA: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="0"
-                      />
+                      <label className="block text-sm font-medium mb-1 text-gray-600">Game Squadra A</label>
+                      <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600">
+                        {(() => {
+                          const set1A = parseInt(editForm.set1Games.teamA) || 0;
+                          const set2A = parseInt(editForm.set2Games.teamA) || 0;
+                          const set3A = parseInt(editForm.set3Games.teamA) || 0;
+                          return set1A + set2A + set3A;
+                        })()}
+                      </div>
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium mb-1">Game Squadra B</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={editForm.totalGamesB}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, totalGamesB: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="0"
-                      />
+                      <label className="block text-sm font-medium mb-1 text-gray-600">Game Squadra B</label>
+                      <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-600">
+                        {(() => {
+                          const set1B = parseInt(editForm.set1Games.teamB) || 0;
+                          const set2B = parseInt(editForm.set2Games.teamB) || 0;
+                          const set3B = parseInt(editForm.set3Games.teamB) || 0;
+                          return set1B + set2B + set3B;
+                        })()}
+                      </div>
                     </div>
                   </div>
                 </div>
