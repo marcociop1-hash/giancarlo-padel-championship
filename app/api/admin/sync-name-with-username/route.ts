@@ -37,10 +37,16 @@ export async function POST() {
     console.log(`📋 Trovati ${players.length} giocatori`);
     
     const batch = db.batch();
-    const results = [];
+    const results: Array<{
+      playerId: string;
+      oldName: string;
+      newName: string;
+      success: boolean;
+      error?: string;
+    }> = [];
     
     for (const player of players) {
-      const { id, username, name } = player;
+      const { id, username, name } = player as any;
       
       if (username && username !== name) {
         // Aggiorna il campo name con il valore di username
