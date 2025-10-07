@@ -483,6 +483,47 @@ export default function PadelTournamentApp() {
     });
   }, [calendarFiltered]);
 
+  // Raggruppa le partite dell'utente per giornata
+  const myMatchesByMatchday = useMemo(() => {
+    const myMatches = calendarBase.filter((m) => isMeInMatch(m));
+    const groups = new Map();
+    
+    for (const m of myMatches) {
+      // Raggruppa per giornata, con gestione speciale per supercoppa
+      let key;
+      if (m.phase === 'supercoppa') {
+        key = m.roundLabel || 'Supercoppa';
+      } else {
+        key = m.matchday ? `Giornata ${m.matchday}` : "Senza giornata";
+      }
+      
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(m);
+    }
+    
+    return Array.from(groups.entries()).sort((a, b) => {
+      // Ordine speciale per supercoppa
+      const supercoppaOrder = ['Quarti di finale', 'Semifinali', 'Finale'];
+      const aIndex = supercoppaOrder.indexOf(a[0]);
+      const bIndex = supercoppaOrder.indexOf(b[0]);
+      
+      if (aIndex !== -1 && bIndex !== -1) {
+        return aIndex - bIndex;
+      }
+      if (aIndex !== -1) return 1; // Supercoppa dopo campionato
+      if (bIndex !== -1) return -1;
+      
+      // Per il campionato, ordina per numero giornata
+      if (a[0] === "Senza giornata") return 1;
+      if (b[0] === "Senza giornata") return -1;
+      
+      // Estrai numero giornata per ordinamento numerico
+      const aNum = parseInt(a[0].replace('Giornata ', '')) || 0;
+      const bNum = parseInt(b[0].replace('Giornata ', '')) || 0;
+      return aNum - bNum;
+    });
+  }, [calendarBase, me]);
+
   /* ========= STATISTICHE PERSONALI ========= */
   const myStats = useMemo(() => {
     if (!me?.uid || !matches.length) {
@@ -973,23 +1014,34 @@ export default function PadelTournamentApp() {
 
 
         {tab === "mie" && (
-          <Section title="Le mie partite">
-            {calendarBase.filter((m) => isMeInMatch(m)).length ? (
-              <div className="space-y-3">
-                {calendarBase.filter((m) => isMeInMatch(m)).map((m) => (
-                  <MatchCard
-                    key={m.id}
-                    m={m}
-                    me={me}
-                    playersMap={playersMap}
-                    onConfirmed={onMatchConfirmed}
-                  />
-                ))}
-              </div>
-            ) : (
-              <Empty>Nessuna partita.</Empty>
-            )}
-          </Section>
+          <div className="space-y-4">
+            <Section title="Le mie partite">
+              {myMatchesByMatchday.length ? (
+                <div className="space-y-6">
+                  {myMatchesByMatchday.map(([matchday, matchList]) => (
+                    <div key={matchday}>
+                      <div className="sticky top-16 z-10 -mx-4 mb-2 bg-white/80 px-4 py-1 text-xs font-semibold text-gray-500 backdrop-blur">
+                        {matchday} ({matchList.length} partita{matchList.length > 1 ? 'e' : ''})
+                      </div>
+                      <div className="space-y-3">
+                        {matchList.map((m) => (
+                          <MatchCard
+                            key={m.id}
+                            m={m}
+                            me={me}
+                            playersMap={playersMap}
+                            onConfirmed={onMatchConfirmed}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <Empty>Nessuna partita.</Empty>
+              )}
+            </Section>
+          </div>
         )}
 
         {tab === "calendario" && (
