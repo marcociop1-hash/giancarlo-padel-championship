@@ -86,6 +86,7 @@ function getStatusColor(status) {
     case 'completed': return 'bg-green-100 text-green-800';
     case 'confirmed': return 'bg-yellow-100 text-yellow-800';
     case 'scheduled': return 'bg-blue-100 text-blue-800';
+    case 'da recuperare': return 'bg-red-100 text-red-800';
     case 'incomplete': return 'bg-red-100 text-red-800';
     default: return 'bg-gray-100 text-gray-800';
   }
@@ -96,6 +97,7 @@ function getStatusIcon(status) {
     case 'completed': return '✅';
     case 'confirmed': return '⏳';
     case 'scheduled': return '📅';
+    case 'da recuperare': return '🔄';
     case 'incomplete': return '❌';
     default: return '❓';
   }
@@ -459,7 +461,7 @@ export default function LogPage() {
     const completedMatches = matches.filter(m => m.status === 'completed').length;
     const confirmedMatches = matches.filter(m => m.status === 'confirmed').length;
     const scheduledMatches = matches.filter(m => m.status === 'scheduled').length;
-    const incompleteMatches = matches.filter(m => m.status === 'incomplete').length;
+    const recoveryMatches = matches.filter(m => m.status === 'da recuperare').length;
     
     const totalMatchdays = Object.keys(matchesByMatchday).length;
     const playersWithoutMatches = players.filter(player => !playerPairings[player.id] || playerPairings[player.id].pairings.length === 0).length;
@@ -469,7 +471,7 @@ export default function LogPage() {
       completedMatches,
       confirmedMatches,
       scheduledMatches,
-      incompleteMatches,
+      recoveryMatches,
       totalMatchdays,
       playersWithoutMatches,
       repeatedPairingsCount: repeatedPairings.length
@@ -536,8 +538,8 @@ export default function LogPage() {
           <div className="text-sm text-gray-600">Programmate</div>
         </div>
         <div className="bg-white rounded-lg p-4 shadow-sm border">
-          <div className="text-2xl font-bold text-red-600">{stats.incompleteMatches}</div>
-          <div className="text-sm text-gray-600">Incomplete</div>
+          <div className="text-2xl font-bold text-red-600">{stats.recoveryMatches}</div>
+          <div className="text-sm text-gray-600">Da recuperare</div>
         </div>
         <div className="bg-white rounded-lg p-4 shadow-sm border">
           <div className="text-2xl font-bold text-orange-600">{stats.playersWithoutMatches}</div>
@@ -728,16 +730,16 @@ export default function LogPage() {
             )}
           </div>
 
-          {/* Partite incomplete */}
+          {/* Partite da recuperare */}
           <div>
-            <h3 className="font-medium text-red-800 mb-2">Partite incomplete</h3>
-            {stats.incompleteMatches > 0 ? (
+            <h3 className="font-medium text-red-800 mb-2">Partite da recuperare</h3>
+            {stats.recoveryMatches > 0 ? (
               <div className="text-sm text-red-700 bg-red-50 p-2 rounded">
-                ⚠️ {stats.incompleteMatches} partite incomplete
+                ⚠️ {stats.recoveryMatches} partite da recuperare
               </div>
             ) : (
               <div className="text-sm text-green-700 bg-green-50 p-2 rounded">
-                ✅ Nessuna partita incomplete
+                ✅ Nessuna partita da recuperare
               </div>
             )}
           </div>
