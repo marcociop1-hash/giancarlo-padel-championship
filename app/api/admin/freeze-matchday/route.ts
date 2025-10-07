@@ -321,8 +321,18 @@ export async function POST(request: NextRequest) {
         };
 
         console.log(`Attempting to update match ${match.id} with data:`, updateData);
-        await matchRef.update(updateData);
-        console.log(`✅ Successfully updated match ${match.id}`);
+        
+        // Prova prima con update, se fallisce prova con setDoc
+        try {
+          await matchRef.update(updateData);
+          console.log(`✅ Successfully updated match ${match.id} with update()`);
+        } catch (updateError) {
+          console.log(`❌ Update failed for match ${match.id}, trying setDoc:`, updateError.message);
+          // Prova con setDoc invece di update
+          await matchRef.set(updateData, { merge: true });
+          console.log(`✅ Successfully updated match ${match.id} with setDoc()`);
+        }
+        
         successCount++;
         
       } catch (matchError) {
