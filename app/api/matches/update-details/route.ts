@@ -190,7 +190,15 @@ export async function POST(req: Request) {
       if (set2Games) updateData.set2Games = set2Games;
       if (set3Games) updateData.set3Games = set3Games;
       
-      await db.collection("matches").doc(matchId).update(updateData);
+      // Filtra i valori undefined prima di inviare a Firestore
+      const cleanUpdateData: any = {};
+      Object.keys(updateData).forEach(key => {
+        if (updateData[key] !== undefined) {
+          cleanUpdateData[key] = updateData[key];
+        }
+      });
+      
+      await db.collection("matches").doc(matchId).update(cleanUpdateData);
       
       // Se la partita era "da recuperare" e ora è "completed", ripristina i dati originali
       if (match.status === 'da recuperare' && status === 'completed' && match.originalData) {
@@ -272,7 +280,15 @@ export async function POST(req: Request) {
         }
       }
       
-      await db.collection("matches").doc(matchId).update(updateData);
+      // Filtra i valori undefined prima di inviare a Firestore
+      const cleanUpdateData: any = {};
+      Object.keys(updateData).forEach(key => {
+        if (updateData[key] !== undefined) {
+          cleanUpdateData[key] = updateData[key];
+        }
+      });
+      
+      await db.collection("matches").doc(matchId).update(cleanUpdateData);
     }
     
     return NextResponse.json({
