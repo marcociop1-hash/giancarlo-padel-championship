@@ -7,7 +7,7 @@ const LoginForm = memo(({ onLogin, onRegister, error, loading }) => {
     email: '',
     username: '',
     password: '',
-    loginMethod: 'email', // 'email' o 'username'
+    loginMethod: 'username', // 'email' o 'username' - default username
     isRegistering: false,
     newUser: {
       name: '',
