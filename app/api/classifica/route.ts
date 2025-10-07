@@ -241,14 +241,13 @@ export async function GET(req: Request) {
       }
     }
 
-    // Leggi solo partite di campionato completate
+    // Leggi partite completate (incluse quelle senza phase per retrocompatibilità)
     const snap = await db
       .collection('matches')
-      .where('phase', '==', 'campionato')
       .where('status', '==', 'completed')
       .get();
       
-    console.log(`📊 Trovate ${snap.size} partite di campionato con status 'completed'`);
+    console.log(`📊 Trovate ${snap.size} partite con status 'completed'`);
     
     // Se non troviamo partite con status 'completed', proviamo a cercare partite con scoreA e scoreB
     if (snap.empty) {
@@ -258,7 +257,7 @@ export async function GET(req: Request) {
       
       const matchesWithScore = allMatches.docs.filter(doc => {
         const data = doc.data();
-        return data.phase === 'campionato' &&
+        return data.phase !== 'supercoppa' &&
                data.scoreA !== undefined && data.scoreB !== undefined && 
                typeof data.scoreA === 'number' && typeof data.scoreB === 'number' &&
                (data.scoreA > 0 || data.scoreB > 0);
@@ -281,7 +280,10 @@ export async function GET(req: Request) {
       }
     }
 
-    const matches = snap.docs.map(doc => doc.data());
+    // Filtra le partite per escludere solo quelle di supercoppa
+    const allMatches = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const matches = allMatches.filter(match => match.phase !== 'supercoppa');
+    console.log(`📊 Filtrate ${matches.length} partite (escluse ${allMatches.length - matches.length} partite supercoppa)`);
     
     // Debug dettagliato delle partite trovate
     console.log('Partite completate trovate:', matches.length);
