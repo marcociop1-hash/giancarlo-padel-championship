@@ -282,7 +282,7 @@ export async function GET(req: Request) {
 
     // Filtra le partite per escludere solo quelle di supercoppa
     const allMatches = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    const matches = allMatches.filter(match => match.phase !== 'supercoppa');
+    const matches = allMatches.filter(match => (match as any).phase !== 'supercoppa');
     console.log(`📊 Filtrate ${matches.length} partite (escluse ${allMatches.length - matches.length} partite supercoppa)`);
     
     // Debug dettagliato delle partite trovate
@@ -290,13 +290,13 @@ export async function GET(req: Request) {
     matches.forEach((match, index) => {
       console.log(`Partita ${index + 1}:`, {
         id: match.id,
-        phase: match.phase,
-        date: match.date,
-        teamA: match.teamA?.map(p => ({ id: p.id, name: p.name })),
-        teamB: match.teamB?.map(p => ({ id: p.id, name: p.name })),
-        scoreA: match.scoreA,
-        scoreB: match.scoreB,
-        status: match.status
+        phase: (match as any).phase,
+        date: (match as any).date,
+        teamA: (match as any).teamA?.map((p: any) => ({ id: p.id, name: p.name })),
+        teamB: (match as any).teamB?.map((p: any) => ({ id: p.id, name: p.name })),
+        scoreA: (match as any).scoreA,
+        scoreB: (match as any).scoreB,
+        status: (match as any).status
       });
     });
     
@@ -305,8 +305,8 @@ export async function GET(req: Request) {
     console.log('Ordinando partite per data...');
     validMatches = matches.sort((a, b) => {
       // Ordina per data e poi per ID per consistenza
-      if (a.date && b.date) {
-        return a.date.localeCompare(b.date);
+      if ((a as any).date && (b as any).date) {
+        return (a as any).date.localeCompare((b as any).date);
       }
       return (a.id || '').localeCompare(b.id || '');
     });
