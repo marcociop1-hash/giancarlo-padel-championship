@@ -223,12 +223,14 @@ async function finalizeCampionato(db: FirebaseFirestore.Firestore) {
  *  GENERAZIONE SUPERCOPPA PADEL (2vs2) - ALBERO COMPLETO
  *  ========================= */
 async function generateSupercoppa(db: FirebaseFirestore.Firestore) {
-  // 1. Verifica che il campionato sia completato
+  // 1. Verifica che il campionato sia completato e blocca la classifica se necessario
   const cfgSnap = await db.collection("config").doc("tournament").get();
   const cfg = cfgSnap.exists ? (cfgSnap.data() as any) : {};
   
   if (cfg?.phase !== "campionato-completato") {
-    throw new Error("Il campionato deve essere completato prima di avviare la supercoppa");
+    // Se il campionato non è ancora completato, finalizzalo e blocca la classifica
+    console.log('🏁 Finalizzando campionato e bloccando classifica...');
+    await finalizeCampionato(db);
   }
 
   // 2. Carica la classifica congelata del campionato

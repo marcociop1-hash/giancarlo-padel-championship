@@ -210,13 +210,45 @@ export async function GET(req: Request) {
 
     const db = adminDb();
 
-    // Leggi partite completate con query ottimizzata
+    // Controlla lo stato del torneo
+    const configSnap = await db.collection('config').doc('tournament').get();
+    const tournamentConfig = configSnap.data();
+    const currentPhase = tournamentConfig?.phase || 'campionato';
+    
+    console.log(`🏆 Fase torneo attuale: ${currentPhase}`);
+    
+    // Se il campionato è completato, usa la classifica bloccata
+    if (currentPhase === 'campionato-completato' || currentPhase === 'supercoppa') {
+      console.log('📋 Campionato completato, caricando classifica bloccata...');
+      
+      const standingsSnap = await db.collection('standings_campionato').get();
+      if (!standingsSnap.empty) {
+        const frozenStandings = standingsSnap.docs.map(doc => ({
+          ...doc.data(),
+          playerId: doc.id
+        }));
+        
+        console.log(`✅ Caricata classifica bloccata con ${frozenStandings.length} giocatori`);
+        
+        return NextResponse.json({ 
+          rows: frozenStandings,
+          cached: false,
+          timestamp: Date.now(),
+          totalMatches: 0,
+          frozen: true,
+          phase: currentPhase
+        });
+      }
+    }
+
+    // Leggi solo partite di campionato completate
     const snap = await db
       .collection('matches')
+      .where('phase', '==', 'campionato')
       .where('status', '==', 'completed')
       .get();
       
-    console.log(`📊 Trovate ${snap.size} partite con status 'completed'`);
+    console.log(`📊 Trovate ${snap.size} partite di campionato con status 'completed'`);
     
     // Se non troviamo partite con status 'completed', proviamo a cercare partite con scoreA e scoreB
     if (snap.empty) {
@@ -226,7 +258,8 @@ export async function GET(req: Request) {
       
       const matchesWithScore = allMatches.docs.filter(doc => {
         const data = doc.data();
-        return data.scoreA !== undefined && data.scoreB !== undefined && 
+        return data.phase === 'campionato' &&
+               data.scoreA !== undefined && data.scoreB !== undefined && 
                typeof data.scoreA === 'number' && typeof data.scoreB === 'number' &&
                (data.scoreA > 0 || data.scoreB > 0);
       });
