@@ -38,7 +38,12 @@ export async function POST(req: Request) {
     console.log(`🔄 Aggiornamento ${usernameUpdates.length} username...`);
     
     const batch = db.batch();
-    const results = [];
+    const results: Array<{
+      playerId: string;
+      newUsername?: string;
+      success: boolean;
+      error?: string;
+    }> = [];
     
     for (const update of usernameUpdates) {
       const { playerId, newUsername } = update;
