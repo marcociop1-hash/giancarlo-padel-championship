@@ -219,11 +219,11 @@ export async function POST(request: NextRequest) {
     matchesToFreeze.forEach((match, index) => {
       console.log(`Match ${index + 1}:`, {
         id: match.id,
-        status: match.status,
-        matchday: match.matchday,
-        phase: match.phase,
-        scoreA: match.scoreA,
-        scoreB: match.scoreB
+        status: (match as any).status,
+        matchday: (match as any).matchday,
+        phase: (match as any).phase,
+        scoreA: (match as any).scoreA,
+        scoreB: (match as any).scoreB
       });
     });
     
