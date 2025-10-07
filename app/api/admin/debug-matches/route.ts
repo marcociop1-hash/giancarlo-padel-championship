@@ -86,6 +86,7 @@ export async function GET() {
         id: m.id,
         phase: m.phase,
         status: m.status,
+        matchday: m.matchday,
         date: m.date,
         score: `${m.scoreA || 0}-${m.scoreB || 0}`,
         teamA: m.teamA?.map((p: any) => p.name).join(' & '),
