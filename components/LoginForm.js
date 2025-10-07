@@ -1,4 +1,4 @@
-// components/LoginForm.js
+// components/LoginForm.js - Updated with username login
 import { useState, useCallback, memo } from 'react';
 import { LogIn, UserPlus, Shield } from 'lucide-react';
 
