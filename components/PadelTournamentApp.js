@@ -119,7 +119,7 @@ StatusBadge.displayName = 'StatusBadge';
    Componente principale con TAB
    ============================ */
 export default function PadelTournamentApp() {
-  const [tab, setTab] = useState("home");
+  const [tab, setTab] = useState("calendario");
   const [me, setMe] = useState(null);
   const [players, setPlayers] = useState([]);
   const [matches, setMatches] = useState([]);
@@ -908,13 +908,13 @@ export default function PadelTournamentApp() {
 
           <div className="hidden items-center gap-2 sm:flex">
             {[
-              ["home", "Home"],
               ["mie", "Le mie partite"],
               ["calendario", "Calendario"],
               ["classifica", "Classifica"],
               ["supercoppa", "Supercoppa"],
               ["recuperi", "Recuperi"],
               ["profilo", "Profilo"],
+              ["regolamento", "Regolamento"],
             ].map(([key, label]) => (
               <button
                 key={key}
@@ -935,13 +935,13 @@ export default function PadelTournamentApp() {
         {/* Tabs per mobile - Con icone per maggiore chiarezza */}
         <div className="mt-3 flex gap-1 sm:hidden overflow-hidden">
           {[
-            ["home", "🏠", "Home"],
             ["mie", "👤", "Mie"],
             ["calendario", "📅", "Cal."],
             ["classifica", "🏆", "Class."],
             ["supercoppa", "⚡", "Super."],
             ["recuperi", "⏸️", "Rec."],
             ["profilo", "⚙️", "Prof."],
+            ["regolamento", "📋", "Reg."],
           ].map(([key, icon, shortLabel]) => (
             <button
               key={key}
@@ -971,53 +971,6 @@ export default function PadelTournamentApp() {
           </div>
         )}
 
-        {tab === "home" && (
-          <div className="space-y-6">
-            {/* Prossime partite */}
-            <Section title="Prossime partite (tu)">
-              {calendarBase.filter((m) => isMeInMatch(m) && m.status !== "completed").length ? (
-                <div className="space-y-3">
-                  {calendarBase
-                    .filter((m) => isMeInMatch(m) && m.status !== "completed")
-                    .map((m) => (
-                      <MatchCard
-                        key={m.id}
-                        m={m}
-                        me={me}
-                        playersMap={playersMap}
-                        onConfirmed={onMatchConfirmed}
-                      />
-                    ))}
-                </div>
-              ) : (
-                <Empty>Nessuna partita.</Empty>
-              )}
-            </Section>
-
-            {/* Partite da recuperare (se presenti) */}
-            {recoveryMatches.length > 0 && (
-              <Section title="Partite da Recuperare">
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-orange-600">⏸️</span>
-                    <span className="font-medium text-orange-800">
-                      Hai {recoveryMatches.length} partita{recoveryMatches.length > 1 ? 'e' : ''} da recuperare
-                    </span>
-                  </div>
-                  <p className="text-sm text-orange-700 mb-3">
-                    Queste partite sono state rinviate e non influenzano la classifica attuale.
-                  </p>
-                  <button
-                    onClick={() => setTab("recuperi")}
-                    className="text-sm bg-orange-600 text-white px-3 py-1 rounded hover:bg-orange-700 transition-colors"
-                  >
-                    Vedi Dettagli
-                  </button>
-                </div>
-              </Section>
-            )}
-          </div>
-        )}
 
         {tab === "mie" && (
           <Section title="Le mie partite">
@@ -1504,6 +1457,173 @@ export default function PadelTournamentApp() {
                 "Il padel non è solo uno sport, è uno stile di vita che ti insegna a non arrenderti mai!"
               </blockquote>
               <div className="text-sm opacity-90">- Giancarlo Padel Championship</div>
+            </div>
+          </div>
+        )}
+
+        {tab === "regolamento" && (
+          <div className="space-y-6">
+            {/* HEADER REGOLAMENTO */}
+            <div className="text-center">
+              <div className="mx-auto w-24 h-24 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-full flex items-center justify-center mb-4">
+                <span className="text-3xl">📋</span>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                Regolamento del Torneo
+              </h2>
+              <p className="text-gray-600">Tutte le regole e informazioni del campionato</p>
+            </div>
+
+            {/* REGOLAMENTO COMPLETO */}
+            <div className="bg-white rounded-xl border p-6">
+              <div className="prose prose-sm max-w-none">
+                <h1 className="text-2xl font-bold text-center mb-6 text-emerald-600">
+                  🏆 REGOLAMENTO CAMPIONATO DI PADEL 2025/2026 🏆
+                </h1>
+                
+                <div className="space-y-6">
+                  <section>
+                    <h2 className="text-xl font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                      <span className="text-2xl">1️⃣</span>
+                      PARTECIPANTI E STRUTTURA DEL CAMPIONATO
+                    </h2>
+                    <ul className="space-y-2 text-gray-700">
+                      <li>• Il campionato è composto da 16 partecipanti.</li>
+                      <li>• Le coppie saranno formate e sorteggiate prima di ogni giornata tramite algoritmo.</li>
+                      <li>• Ogni giocatore avrà un punteggio individuale in una classifica generale.</li>
+                      <li>• Il campionato si svolgerà su 15 giornate totali (ogni giocatore affronterà tutti gli altri una volta).</li>
+                      <li>• Il campionato inizierà a ottobre 2025 e terminerà una volta disputate tutte le 15 giornate di gioco.</li>
+                    </ul>
+                  </section>
+
+                  <section>
+                    <h2 className="text-xl font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                      <span className="text-2xl">2️⃣</span>
+                      FORMAZIONE DELLE COPPIE
+                    </h2>
+                    <ul className="space-y-2 text-gray-700">
+                      <li>• Ogni giocatore dovrà giocare una sola volta in coppia con ciascun altro partecipante durante la stagione.</li>
+                      <li>• Le coppie saranno determinate da un algoritmo di rotazione casuale, che garantisce che nessuna coppia si ripeta più di una volta.</li>
+                    </ul>
+                  </section>
+
+                  <section>
+                    <h2 className="text-xl font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                      <span className="text-2xl">3️⃣</span>
+                      ABBINAMENTO DELLE PARTITE
+                    </h2>
+                    <ul className="space-y-2 text-gray-700">
+                      <li>• Ogni giornata prevede 4 partite (8 coppie totali).</li>
+                      <li>• Prima giornata: coppie e partite formate in modo totalmente casuale.</li>
+                      <li>• Dalla seconda giornata in poi, le partite vengono accoppiate da un algoritmo che segue i seguenti criteri:</li>
+                    </ul>
+                    <div className="ml-4 mt-2 space-y-1 text-gray-600">
+                      <p><strong>Criterio principale:</strong> somma dei punti individuali dei due giocatori; in caso di parità, si considera la differenza game (game vinti - game persi).</p>
+                      <p><strong>Criterio secondario:</strong> evitare che le stesse coppie affrontino sempre gli stessi avversari. Questo criterio è sempre attivo, ma con priorità inferiore rispetto a punti e differenza game.</p>
+                    </div>
+                  </section>
+
+                  <section>
+                    <h2 className="text-xl font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                      <span className="text-2xl">4️⃣</span>
+                      SVOLGIMENTO DELLE PARTITE
+                    </h2>
+                    <ul className="space-y-2 text-gray-700">
+                      <li>• Ogni partita si gioca al meglio di tre set, ma tutti e tre i set devono essere disputati.</li>
+                      <li>• <strong>Punteggio in classifica:</strong></li>
+                    </ul>
+                    <div className="ml-4 mt-2 space-y-1 text-gray-600">
+                      <p>Vittoria 3–0 → squadra vincente 3 punti, perdente 0.</p>
+                      <p>Vittoria 2–1 → squadra vincente 2 punti, perdente 1.</p>
+                    </div>
+                    <ul className="space-y-2 text-gray-700 mt-3">
+                      <li>• Ogni set vinto vale quindi un punto nella classifica.</li>
+                      <li>• La classifica generale considera, oltre ai punti, anche la differenza game (game vinti - game persi) come criterio di spareggio.</li>
+                      <li>• Regola "punto secco" (killer point): sul 40–40 si gioca direttamente il punto decisivo, senza vantaggi, per ridurre i tempi e favorire il completamento delle partite.</li>
+                    </ul>
+                  </section>
+
+                  <section>
+                    <h2 className="text-xl font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                      <span className="text-2xl">5️⃣</span>
+                      PARTITE NON COMPLETATE E RITIRI
+                    </h2>
+                    <ul className="space-y-2 text-gray-700">
+                      <li>• <strong>Se una partita non può essere completata:</strong></li>
+                    </ul>
+                    <div className="ml-4 mt-2 space-y-1 text-gray-600">
+                      <p>Se il terzo set non è iniziato, la partita deve essere ripresa e completata successivamente.</p>
+                      <p>Se il terzo set è già iniziato, la partita viene considerata conclusa. Vince la squadra con più game nel terzo set (non sono ammessi pareggi).</p>
+                      <p>Se al momento dell'interruzione le squadre sono in perfetta parità (game e punti), si effettua il lancio della monetina.</p>
+                    </div>
+                    <ul className="space-y-2 text-gray-700 mt-3">
+                      <li>• Il punteggio del terzo set, in caso di interruzione, viene stabilito in base alla differenza dei game vinti fino a quel momento (es. +2 game → 6–4, +3 game → 6–3, ecc.).</li>
+                      <li>• <strong>In caso di ritiro di un giocatore:</strong></li>
+                    </ul>
+                    <div className="ml-4 mt-2 space-y-1 text-gray-600">
+                      <p>Se avviene prima dell'inizio del terzo set, la partita si congela e potrà essere completata in seguito.</p>
+                      <p>Se avviene durante il terzo set, la squadra che si ritira perde automaticamente quel set e il relativo punto.</p>
+                    </div>
+                  </section>
+
+                  <section>
+                    <h2 className="text-xl font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                      <span className="text-2xl">6️⃣</span>
+                      GESTIONE DELLE GIORNATE E RECUPERI
+                    </h2>
+                    <ul className="space-y-2 text-gray-700">
+                      <li>• Le giornate si svolgono ogni due settimane (una di gioco e una di pausa).</li>
+                      <li>• Possono esserci eccezioni di anticipo o posticipo della settimana di gioco in caso di necessità.</li>
+                      <li>• Se una o più partite non vengono giocate, la giornata resta "congelata": la classifica non viene aggiornata fino al completamento di tutte le partite di quella giornata.</li>
+                      <li>• Il sorteggio della giornata successiva si basa sempre sull'ultima giornata completamente giocata.</li>
+                    </ul>
+                  </section>
+
+                  <section>
+                    <h2 className="text-xl font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                      <span className="text-2xl">7️⃣</span>
+                      QUOTA E PREMI
+                    </h2>
+                    <ul className="space-y-2 text-gray-700">
+                      <li>• Quota iscrizione: 20 € a partecipante.</li>
+                      <li>• <strong>Premi netti per i primi 3 classificati:</strong></li>
+                    </ul>
+                    <div className="ml-4 mt-2 space-y-1 text-gray-600">
+                      <p>🥇 1° classificato → 160 € netti</p>
+                      <p>🥈 2° classificato → 80 € netti</p>
+                      <p>🥉 3° classificato → 20 € netti</p>
+                    </div>
+                  </section>
+
+                  <section>
+                    <h2 className="text-xl font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                      <span className="text-2xl">8️⃣</span>
+                      ORGANIZZAZIONE DELLE PARTITE
+                    </h2>
+                    <ul className="space-y-2 text-gray-700">
+                      <li>• Dopo la pubblicazione delle partite, ogni giocatore deve contribuire all'organizzazione del proprio match.</li>
+                      <li>• È responsabilità dei 4 giocatori trovare campo, data e orario, preferibilmente entro 48 ore dal sorteggio.</li>
+                      <li>• Le partite devono essere comunicate nel gruppo WhatsApp una volta fissate.</li>
+                    </ul>
+                  </section>
+
+                  <section>
+                    <h2 className="text-xl font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                      <span className="text-2xl">9️⃣</span>
+                      RACCOMANDAZIONI
+                    </h2>
+                    <ul className="space-y-2 text-gray-700">
+                      <li>• Si raccomanda di arrivare con almeno 10 minuti di anticipo rispetto all'orario della partita, pronti per iniziare.</li>
+                      <li>• Sono comprese eccezioni per motivi di lavoro o personali.</li>
+                      <li>• È previsto un riscaldamento di 5 minuti prima dell'inizio: eventuali ritardi riducono proporzionalmente il tempo di riscaldamento.</li>
+                      <li>• In caso di disaccordo su un punto (es. palla che tocca o meno il vetro), è buona regola ripetere il punto senza discussioni.</li>
+                      <li>• Dopo la pubblicazione delle partite, ogni giocatore deve interessarsi attivamente all'organizzazione: se nessuno scrive, è dovere di tutti contattare gli altri 3 giocatori per accordarsi su campo e orario.</li>
+                      <li>• È importante non aspettare l'ultimo momento per prenotare il campo o definire l'orario.</li>
+                      <li>• L'obiettivo è garantire puntualità, collaborazione e un clima sereno e sportivo.</li>
+                    </ul>
+                  </section>
+                </div>
+              </div>
             </div>
           </div>
         )}
