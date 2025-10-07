@@ -253,23 +253,29 @@ export default function LogPage() {
           place: editForm.place,
           date: editForm.date,
           time: editForm.time,
-          scoreA: editForm.scoreA ? parseInt(editForm.scoreA) : undefined,
-          scoreB: editForm.scoreB ? parseInt(editForm.scoreB) : undefined,
+          ...(editForm.scoreA && { scoreA: parseInt(editForm.scoreA) }),
+          ...(editForm.scoreB && { scoreB: parseInt(editForm.scoreB) }),
           status: "completed", // Forza sempre completed quando si modifica dal log
-          totalGamesA: editForm.totalGamesA ? parseInt(editForm.totalGamesA) : undefined,
-          totalGamesB: editForm.totalGamesB ? parseInt(editForm.totalGamesB) : undefined,
-          set1Games: {
-            teamA: editForm.set1Games.teamA ? parseInt(editForm.set1Games.teamA) : undefined,
-            teamB: editForm.set1Games.teamB ? parseInt(editForm.set1Games.teamB) : undefined
-          },
-          set2Games: {
-            teamA: editForm.set2Games.teamA ? parseInt(editForm.set2Games.teamA) : undefined,
-            teamB: editForm.set2Games.teamB ? parseInt(editForm.set2Games.teamB) : undefined
-          },
-          set3Games: {
-            teamA: editForm.set3Games.teamA ? parseInt(editForm.set3Games.teamA) : undefined,
-            teamB: editForm.set3Games.teamB ? parseInt(editForm.set3Games.teamB) : undefined
-          }
+          ...(editForm.totalGamesA && { totalGamesA: parseInt(editForm.totalGamesA) }),
+          ...(editForm.totalGamesB && { totalGamesB: parseInt(editForm.totalGamesB) }),
+          ...(editForm.set1Games.teamA || editForm.set1Games.teamB ? {
+            set1Games: {
+              ...(editForm.set1Games.teamA && { teamA: parseInt(editForm.set1Games.teamA) }),
+              ...(editForm.set1Games.teamB && { teamB: parseInt(editForm.set1Games.teamB) })
+            }
+          } : {}),
+          ...(editForm.set2Games.teamA || editForm.set2Games.teamB ? {
+            set2Games: {
+              ...(editForm.set2Games.teamA && { teamA: parseInt(editForm.set2Games.teamA) }),
+              ...(editForm.set2Games.teamB && { teamB: parseInt(editForm.set2Games.teamB) })
+            }
+          } : {}),
+          ...(editForm.set3Games.teamA || editForm.set3Games.teamB ? {
+            set3Games: {
+              ...(editForm.set3Games.teamA && { teamA: parseInt(editForm.set3Games.teamA) }),
+              ...(editForm.set3Games.teamB && { teamB: parseInt(editForm.set3Games.teamB) })
+            }
+          } : {})
         })
       });
 
