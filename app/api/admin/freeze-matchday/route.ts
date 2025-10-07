@@ -329,12 +329,20 @@ export async function POST(request: NextRequest) {
           confirmedAt: (match as any).confirmedAt
         };
 
+        // Filtra i valori undefined da originalData
+        const cleanOriginalData: any = {};
+        Object.keys(originalData).forEach(key => {
+          if (originalData[key] !== undefined) {
+            cleanOriginalData[key] = originalData[key];
+          }
+        });
+
         // Prepara i dati di aggiornamento - aggiorna solo lo status per ora
         const updateData: any = {
           status: 'da recuperare',
           frozenAt: new Date(),
           originalMatchday: matchday,
-          originalData: originalData
+          originalData: cleanOriginalData
         };
 
         console.log(`Attempting to update match ${match.id} with data:`, updateData);
