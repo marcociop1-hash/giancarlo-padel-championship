@@ -162,39 +162,83 @@ async function finalizeCampionato(db: FirebaseFirestore.Firestore) {
     .where("status", "==", "completed")
     .get();
 
-  type Acc = { name: string; points: number; wins: number };
-  const map = new Map<string, Acc>();
+  // Usa la stessa logica di calculateStandings per calcolare tutti i dettagli
+  const stats = new Map<string, {
+    name: string; 
+    points: number; 
+    setsWon: number; 
+    setsLost: number; 
+    played: number;
+    gamesWon: number;
+    gamesLost: number;
+  }>();
 
-  const add = (pid: string, name: string, points: number, win: boolean) => {
-    const cur = map.get(pid) || { name, points: 0, wins: 0 };
-    cur.points += points;
-    if (win) cur.wins += 1;
-    map.set(pid, cur);
+  const ensure = (id: string, name: string) => {
+    if (!stats.has(id)) {
+      stats.set(id, { name, points: 0, setsWon: 0, setsLost: 0, played: 0, gamesWon: 0, gamesLost: 0 });
+    }
+    return stats.get(id)!;
   };
 
   snap.forEach((d) => {
     const m = d.data() as any;
-    const A: LightPlayer[] = (m.teamA || []).map(toLight);
-    const B: LightPlayer[] = (m.teamB || []).map(toLight);
     const a = Number(m.scoreA || 0);
     const b = Number(m.scoreB || 0);
-    const winA = a > b;
-    const winB = b > a;
-
-    A.forEach((p) => add(p.id || "", p.name, a, winA));
-    B.forEach((p) => add(p.id || "", p.name, b, winB));
+    
+    // Calcola game totali se disponibili
+    const gamesA = Number(m.totalGamesA || 0);
+    const gamesB = Number(m.totalGamesB || 0);
+    
+    // Team A
+    if (m.teamA && Array.isArray(m.teamA)) {
+      m.teamA.forEach((player: any) => {
+        if (player && player.id) {
+          const s = ensure(player.id, player.name);
+          s.played += 1;
+          s.points += a; // Punti = set vinti
+          s.setsWon += a;
+          s.setsLost += b;
+          s.gamesWon += gamesA;
+          s.gamesLost += gamesB;
+        }
+      });
+    }
+    
+    // Team B
+    if (m.teamB && Array.isArray(m.teamB)) {
+      m.teamB.forEach((player: any) => {
+        if (player && player.id) {
+          const s = ensure(player.id, player.name);
+          s.played += 1;
+          s.points += b; // Punti = set vinti
+          s.setsWon += b;
+          s.setsLost += a;
+          s.gamesWon += gamesB;
+          s.gamesLost += gamesA;
+        }
+      });
+    }
   });
 
-  const items = Array.from(map.entries()).map(([playerId, v]) => ({
+  const items = Array.from(stats.entries()).map(([playerId, s]) => ({
     playerId,
-    name: v.name,
-    points: v.points,
-    wins: v.wins,
+    name: s.name,
+    points: s.points,
+    setsWon: s.setsWon,
+    setsLost: s.setsLost,
+    setDiff: s.setsWon - s.setsLost,
+    gamesWon: s.gamesWon,
+    gamesLost: s.gamesLost,
+    gameDiff: s.gamesWon - s.gamesLost,
+    played: s.played,
+    wins: 0 // Calcoleremo le vittorie dopo
   }));
 
   items.sort((x, y) => {
     if (y.points !== x.points) return y.points - x.points;
-    if (y.wins !== x.wins) return y.wins - x.wins;
+    if (y.setDiff !== x.setDiff) return y.setDiff - x.setDiff;
+    if (y.gameDiff !== x.gameDiff) return y.gameDiff - x.gameDiff;
+    if (x.played !== y.played) return x.played - y.played;
     return x.name.localeCompare(y.name);
   });
 
