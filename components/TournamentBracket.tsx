@@ -111,10 +111,10 @@ const TournamentBracket = memo(({ matches }: TournamentBracketProps) => {
     .sort((a, b) => a - b);
 
   const roundLabels = {
-    1: "Semifinali", // Per 8 giocatori, il round 1 sono le semifinali
-    2: "Finale",     // Per 8 giocatori, il round 2 è la finale
-    3: "Semifinali", // Per 16+ giocatori, il round 3 sono le semifinali
-    4: "Finale"      // Per 16+ giocatori, il round 4 è la finale
+    1: "Quarti di finale", // Round 1: Quarti di finale (4 partite da 4 giocatori)
+    2: "Semifinali",       // Round 2: Semifinali (2 partite)
+    3: "Finale",           // Round 3: Finale (1 partita)
+    4: "Finale"            // Round 4: Finale (per compatibilità)
   };
 
   const getRoundColor = (round: number) => {
