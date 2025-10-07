@@ -38,6 +38,7 @@ const normalizeTeam = (() => {
       if (!x) return { id: null, name: "??" };
       if (typeof x === "string") {
         const name =
+          playersMap.get(x)?.username ||
           playersMap.get(x)?.name ||
           playersMap.get(x)?.Nome ||
           playersMap.get(x)?.displayName ||
@@ -47,11 +48,12 @@ const normalizeTeam = (() => {
       const id = x.id || x.uid || null;
       const nameFromId =
         id
-          ? playersMap.get(id)?.name ||
+          ? playersMap.get(id)?.username ||
+            playersMap.get(id)?.name ||
             playersMap.get(id)?.Nome ||
             playersMap.get(id)?.displayName
           : null;
-      const name = x.name || x.Nome || x.displayName || nameFromId || "??";
+      const name = x.username || x.name || x.Nome || x.displayName || nameFromId || "??";
       return { id, name };
     };
 
@@ -1283,7 +1285,7 @@ export default function PadelTournamentApp() {
                 <span className="text-3xl">🎾</span>
               </div>
               <h2 className="text-2xl font-bold text-gray-800 mb-2">
-                {me?.username || me?.displayName || me?.email || "Giocatore Padel"}
+                {me?.username || me?.displayName || "Giocatore Padel"}
               </h2>
               <p className="text-gray-600">Benvenuto nel tuo profilo padel! 🏆</p>
             </div>

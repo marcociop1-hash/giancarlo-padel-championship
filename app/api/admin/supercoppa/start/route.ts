@@ -35,7 +35,7 @@ type LightPlayer = { id: string | null; name: string; points?: number; wins?: nu
 function toLight(p: any): LightPlayer {
   return {
     id: p?.id ?? null,
-    name: p?.name ?? p?.Nome ?? p?.displayName ?? p?.username ?? p?.id ?? "??",
+    name: p?.username ?? p?.name ?? p?.Nome ?? p?.displayName ?? p?.id ?? "??",
     points: typeof p?.points === "number" ? p.points : undefined,
     wins: typeof p?.wins === "number" ? p.wins : undefined,
     rank: typeof p?.rank === "number" ? p.rank : undefined,
