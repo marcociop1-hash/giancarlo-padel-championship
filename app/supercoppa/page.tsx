@@ -37,6 +37,7 @@ export default function SupercoppaPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+  const [bannerClosed, setBannerClosed] = useState(false);
 
   // Carica le partite della supercoppa
   useEffect(() => {
@@ -182,8 +183,9 @@ export default function SupercoppaPage() {
 
         {/* Banner completamento */}
         <SupercoppaCompletedBanner 
-          isVisible={isCompleted}
+          isVisible={isCompleted && !bannerClosed}
           winners={winners}
+          onClose={() => setBannerClosed(true)}
         />
 
         {/* Schema ad albero */}

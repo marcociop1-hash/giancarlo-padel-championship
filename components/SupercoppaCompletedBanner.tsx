@@ -5,9 +5,10 @@ import { memo } from 'react';
 type CompletedBannerProps = {
   isVisible: boolean;
   winners?: any[];
+  onClose?: () => void;
 };
 
-const SupercoppaCompletedBanner = memo(({ isVisible, winners }: CompletedBannerProps) => {
+const SupercoppaCompletedBanner = memo(({ isVisible, winners, onClose }: CompletedBannerProps) => {
   if (!isVisible) return null;
 
   const getTeamDisplay = (team: any[]) => {
@@ -21,7 +22,17 @@ const SupercoppaCompletedBanner = memo(({ isVisible, winners }: CompletedBannerP
     : "Vincitori";
 
   return (
-    <div className="bg-gradient-to-r from-emerald-50 to-blue-50 border-2 border-emerald-200 rounded-xl p-6 mb-6 shadow-lg">
+    <div className="bg-gradient-to-r from-emerald-50 to-blue-50 border-2 border-emerald-200 rounded-xl p-6 mb-6 shadow-lg relative">
+      {/* Pulsante di chiusura */}
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 text-gray-500 hover:text-gray-700 text-xl font-bold bg-white rounded-full w-7 h-7 flex items-center justify-center shadow-md hover:bg-gray-100 transition-colors"
+          title="Chiudi banner"
+        >
+          ✕
+        </button>
+      )}
       <div className="text-center">
         {/* Icona di completamento */}
         <div className="text-4xl mb-3">
