@@ -136,6 +136,7 @@ export default function AdminPage() {
   // Generazione partita
   const [genState, setGenState] = useState("idle"); // "idle" | "loading" | "success" | "error"
   const [genMsg, setGenMsg] = useState("");
+  const [confirmGenerate, setConfirmGenerate] = useState(false);
   const genEndpointUsed = "/api/admin/genera-giornata";
 
   // Debug: Generazione partite + risultati
@@ -749,8 +750,15 @@ export default function AdminPage() {
   };
 
   const handleGenerateMatch = useCallback(async () => {
+    if (!confirmGenerate) {
+      setConfirmGenerate(true);
+      alert("ATTENZIONE: Stai per generare una nuova giornata del campionato. Clicca di nuovo per confermare.");
+      return;
+    }
+    
     setGenState("loading");
     setGenMsg("");
+    setConfirmGenerate(false);
     try {
       const res = await fetch(genEndpointUsed, { method: "POST" });
       const data = await res.json().catch(() => ({}));
@@ -767,7 +775,7 @@ export default function AdminPage() {
       setGenState("error");
       setGenMsg((e && (e.message || String(e))) || "Errore di rete");
     }
-  }, [genEndpointUsed, fetchConfirmed]);
+  }, [genEndpointUsed, fetchConfirmed, confirmGenerate]);
 
   // Debug: Genera partite + risultati randomi
   const handleGenerateWithResults = useCallback(async () => {
@@ -1178,16 +1186,25 @@ export default function AdminPage() {
             className={`rounded-xl px-4 py-2 text-white ${
               genState === "loading"
                 ? "bg-gray-400 cursor-not-allowed"
+                : confirmGenerate
+                ? "bg-orange-600 hover:bg-orange-700"
                 : "bg-blue-600 hover:bg-blue-700"
             }`}
           >
-            {genState === "loading" ? "Generazione…" : "Genera nuova giornata"}
+            {genState === "loading" 
+              ? "Generazione…" 
+              : confirmGenerate 
+              ? "Conferma: Genera Giornata" 
+              : "Genera nuova giornata"}
           </button>
           {genState === "success" && (
             <span className="text-green-700 text-sm">✅ {genMsg}</span>
           )}
           {genState === "error" && (
             <span className="text-red-700 text-sm">❌ {genMsg}</span>
+          )}
+          {confirmGenerate && (
+            <span className="text-orange-700 text-sm">⚠️ Clicca di nuovo per confermare la generazione</span>
           )}
         </div>
         <div className="text-xs text-gray-500">
