@@ -312,22 +312,12 @@ export async function POST(request: NextRequest) {
           confirmedAt: (match as any).confirmedAt
         };
 
-        // Prepara i dati di aggiornamento - rimuovi i campi di risultato impostandoli a null
+        // Prepara i dati di aggiornamento - aggiorna solo lo status per ora
         const updateData: any = {
           status: 'da recuperare',
           frozenAt: new Date(),
           originalMatchday: matchday,
-          originalData: originalData,
-          // Rimuovi i campi di risultato impostandoli a null
-          scoreA: null,
-          scoreB: null,
-          totalGamesA: null,
-          totalGamesB: null,
-          set1Games: null,
-          set2Games: null,
-          set3Games: null,
-          completedBy: null,
-          completedAt: null
+          originalData: originalData
         };
 
         console.log(`Attempting to update match ${match.id} with data:`, updateData);
