@@ -317,12 +317,24 @@ export async function POST(request: NextRequest) {
           completedAt: null
         };
 
+        console.log(`Attempting to update match ${match.id} with data:`, updateData);
         await matchRef.update(updateData);
-        console.log(`Successfully updated match ${match.id}`);
+        console.log(`✅ Successfully updated match ${match.id}`);
         successCount++;
         
       } catch (matchError) {
-        console.error(`Error updating match ${match.id}:`, matchError);
+        console.error(`❌ Error updating match ${match.id}:`, {
+          error: matchError,
+          message: matchError.message,
+          code: matchError.code,
+          details: matchError.details
+        });
+        console.error(`Match data that failed:`, {
+          id: match.id,
+          status: (match as any).status,
+          matchday: (match as any).matchday,
+          phase: (match as any).phase
+        });
         errorCount++;
       }
     }
