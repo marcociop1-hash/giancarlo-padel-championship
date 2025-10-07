@@ -7,21 +7,26 @@ import PadelTournamentApp from '../components/PadelTournamentApp';
 import { useAuth } from '../lib/hooks/useAuth';
 
 const Home = memo(() => {
-  const { user, loading, error: authError, login, register, logout } = useAuth();
+  const { user, loading, error: authError, login, loginWithUsername, register, logout } = useAuth();
   const [uiLoading, setUiLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleLogin = useCallback(async (email, password) => {
+  const handleLogin = useCallback(async (identifier, password, method = 'email') => {
     try {
       setError(''); 
       setUiLoading(true);
-      await login(email, password);
+      
+      if (method === 'email') {
+        await login(identifier, password);
+      } else {
+        await loginWithUsername(identifier, password);
+      }
     } catch (e) {
       setError(e?.message || 'Errore di accesso');
     } finally {
       setUiLoading(false);
     }
-  }, [login]);
+  }, [login, loginWithUsername]);
 
   const handleRegister = useCallback(async (email, password, userData) => {
     try {

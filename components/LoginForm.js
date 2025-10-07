@@ -5,7 +5,9 @@ import { LogIn, UserPlus, Shield } from 'lucide-react';
 const LoginForm = memo(({ onLogin, onRegister, error, loading }) => {
   const [formData, setFormData] = useState({
     email: '',
+    username: '',
     password: '',
+    loginMethod: 'email', // 'email' o 'username'
     isRegistering: false,
     newUser: {
       name: '',
@@ -27,10 +29,25 @@ const LoginForm = memo(({ onLogin, onRegister, error, loading }) => {
   }, []);
 
   const handleLogin = useCallback(() => {
-    if (formData.email && formData.password) {
-      onLogin(formData.email, formData.password);
+    if (formData.loginMethod === 'email') {
+      if (formData.email && formData.password) {
+        onLogin(formData.email, formData.password, 'email');
+      }
+    } else {
+      if (formData.username && formData.password) {
+        onLogin(formData.username, formData.password, 'username');
+      }
     }
-  }, [formData.email, formData.password, onLogin]);
+  }, [formData.email, formData.username, formData.password, formData.loginMethod, onLogin]);
+
+  const toggleLoginMethod = useCallback(() => {
+    setFormData(prev => ({ 
+      ...prev, 
+      loginMethod: prev.loginMethod === 'email' ? 'username' : 'email',
+      email: prev.loginMethod === 'email' ? '' : prev.email,
+      username: prev.loginMethod === 'username' ? '' : prev.username
+    }));
+  }, []);
 
   const handleRegister = useCallback(() => {
     const { name, email, password, confirmPassword } = formData.newUser;
@@ -155,17 +172,46 @@ const LoginForm = memo(({ onLogin, onRegister, error, loading }) => {
           ) : (
             // Form di login
             <form onSubmit={(e) => { e.preventDefault(); handleLogin(); }} className="space-y-4">
+              {/* Toggle Email/Username */}
+              <div className="flex justify-center mb-4">
+                <div className="bg-gray-100 rounded-lg p-1 flex">
+                  <button
+                    type="button"
+                    onClick={toggleLoginMethod}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      formData.loginMethod === 'email'
+                        ? 'bg-white text-emerald-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    📧 Email
+                  </button>
+                  <button
+                    type="button"
+                    onClick={toggleLoginMethod}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      formData.loginMethod === 'username'
+                        ? 'bg-white text-emerald-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    👤 Username
+                  </button>
+                </div>
+              </div>
+
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  Email
+                <label htmlFor={formData.loginMethod} className="block text-sm font-medium text-gray-700">
+                  {formData.loginMethod === 'email' ? 'Email' : 'Username'}
                 </label>
                 <input
-                  id="email"
-                  type="email"
+                  id={formData.loginMethod}
+                  type={formData.loginMethod === 'email' ? 'email' : 'text'}
                   required
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-emerald-500 focus:border-emerald-500"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  value={formData.loginMethod === 'email' ? formData.email : formData.username}
+                  onChange={(e) => handleInputChange(formData.loginMethod, e.target.value)}
+                  placeholder={formData.loginMethod === 'email' ? 'inserisci@email.com' : 'Il tuo username'}
                 />
               </div>
 
