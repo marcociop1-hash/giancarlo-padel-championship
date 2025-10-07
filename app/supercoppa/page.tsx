@@ -149,7 +149,8 @@ export default function SupercoppaPage() {
         {/* Banner vincitori (modal) */}
         <SupercoppaWinnerBanner 
           winners={winners} 
-          isVisible={isCompleted} 
+          isVisible={isCompleted && !bannerClosed} 
+          onClose={() => setBannerClosed(true)}
         />
         
         {/* Header */}
