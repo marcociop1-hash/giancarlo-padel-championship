@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getApps, initializeApp, cert } from 'firebase-admin/app';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getFirestore } from 'firebase-admin/firestore';
 import { shouldFreezeMatchday, getFrozenMatchdays } from '../../../lib/tournament-phases';
 
 // Funzione per calcolare la classifica prima di una giornata
@@ -285,24 +285,23 @@ export async function POST(request: NextRequest) {
           confirmedAt: (match as any).confirmedAt
         };
 
-        // Prepara i dati di aggiornamento
+        // Prepara i dati di aggiornamento - rimuovi i campi di risultato impostandoli a null
         const updateData: any = {
           status: 'da recuperare',
           frozenAt: new Date(),
           originalMatchday: matchday,
-          originalData: originalData
+          originalData: originalData,
+          // Rimuovi i campi di risultato impostandoli a null
+          scoreA: null,
+          scoreB: null,
+          totalGamesA: null,
+          totalGamesB: null,
+          set1Games: null,
+          set2Games: null,
+          set3Games: null,
+          completedBy: null,
+          completedAt: null
         };
-
-        // Rimuovi i campi di risultato usando FieldValue.delete()
-        updateData.scoreA = FieldValue.delete();
-        updateData.scoreB = FieldValue.delete();
-        updateData.totalGamesA = FieldValue.delete();
-        updateData.totalGamesB = FieldValue.delete();
-        updateData.set1Games = FieldValue.delete();
-        updateData.set2Games = FieldValue.delete();
-        updateData.set3Games = FieldValue.delete();
-        updateData.completedBy = FieldValue.delete();
-        updateData.completedAt = FieldValue.delete();
 
         await matchRef.update(updateData);
         console.log(`Successfully updated match ${match.id}`);
