@@ -159,13 +159,13 @@ export async function GET() {
       success: true,
       matches: matches.map(m => ({
         id: m.id,
-        status: m.status,
-        matchday: m.matchday,
-        date: m.date,
-        teamA: m.teamA,
-        teamB: m.teamB,
-        scoreA: m.scoreA,
-        scoreB: m.scoreB
+        status: (m as any).status,
+        matchday: (m as any).matchday,
+        date: (m as any).date,
+        teamA: (m as any).teamA,
+        teamB: (m as any).teamB,
+        scoreA: (m as any).scoreA,
+        scoreB: (m as any).scoreB
       }))
     });
 
