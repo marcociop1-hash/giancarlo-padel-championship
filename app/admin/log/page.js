@@ -656,9 +656,9 @@ export default function LogPage() {
                         <div className="text-xs">
                           <span className="font-medium">Game per set:</span> 
                           <span className="ml-1">
-                            Set1: {match.set1Games.teamA}-{match.set1Games.teamB} | 
-                            Set2: {match.set2Games.teamA}-{match.set2Games.teamB} | 
-                            Set3: {match.set3Games.teamA}-{match.set3Games.teamB}
+                            Set1: {match.set1Games[0]}-{match.set1Games[1]} | 
+                            Set2: {match.set2Games[0]}-{match.set2Games[1]} | 
+                            Set3: {match.set3Games[0]}-{match.set3Games[1]}
                           </span>
                         </div>
                       )}
