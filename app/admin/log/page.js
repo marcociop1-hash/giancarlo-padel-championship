@@ -31,30 +31,60 @@ function normalizeTeam(team) {
   return { a: { id: null, name: "??" }, b: { id: null, name: "??" } };
 }
 
-function teamLabel(team, players = [], standings = [], match = null) {
+// Calcola i punti di un giocatore basandosi su un set di partite
+// Regola: ogni set vinto = 1 punto
+function calculatePlayerPoints(playerId, matches) {
+  let points = 0;
+  
+  for (const match of matches) {
+    // Trova se il giocatore è in teamA o teamB
+    const inTeamA = match.teamA?.some(p => (p.id || p) === playerId);
+    const inTeamB = match.teamB?.some(p => (p.id || p) === playerId);
+    
+    if (!inTeamA && !inTeamB) continue;
+    
+    const scoreA = match.scoreA || 0;
+    const scoreB = match.scoreB || 0;
+    
+    if (inTeamA) {
+      // Giocatore in squadra A: prende tanti punti quanti set ha vinto la sua squadra
+      points += scoreA;
+    } else {
+      // Giocatore in squadra B: prende tanti punti quanti set ha vinto la sua squadra
+      points += scoreB;
+    }
+  }
+  
+  return points;
+}
+
+function teamLabel(team, players = [], standings = [], match = null, allMatches = []) {
   const t = normalizeTeam(team);
   
-  // Trova sempre i standings per i giocatori - FIX DEPLOY
-  const standingA = standings.find(s => s.playerId === t.a.id);
-  const standingB = standings.find(s => s.playerId === t.b.id);
-  
-  // PRIORITÀ: Usa i punteggi salvati al momento della generazione se disponibili
+  // Calcola i punteggi progressivi per questa giornata specifica
   let scoreA, scoreB, totalScore;
   
-  if (match && match.generationPoints) {
-    // Usa i punteggi al momento della generazione
-    const isTeamA = match.teamA && match.teamA.some(p => p.id === t.a.id);
-    if (isTeamA) {
-      scoreA = match.generationPoints.teamA.player1.points;
-      scoreB = match.generationPoints.teamA.player2.points;
-      totalScore = match.generationPoints.teamA.total;
-    } else {
-      scoreA = match.generationPoints.teamB.player1.points;
-      scoreB = match.generationPoints.teamB.player2.points;
-      totalScore = match.generationPoints.teamB.total;
+  if (match) {
+    // Filtra le partite completate fino alla giornata corrente (esclusa)
+    const previousMatches = allMatches.filter(m => 
+      m.status === 'completed' && 
+      m.matchday < match.matchday
+    );
+    
+    // Calcola i punteggi progressivi
+    scoreA = calculatePlayerPoints(t.a.id, previousMatches);
+    scoreB = calculatePlayerPoints(t.b.id, previousMatches);
+    totalScore = scoreA + scoreB;
+    
+    // Debug per Nico giornata 2
+    if (match.matchday === 2 && t.a.name === 'Nico') {
+      console.log(`DEBUG Nico giornata 2: ${previousMatches.length} partite precedenti, punti calcolati: ${scoreA}`);
+      console.log(`Partite precedenti:`, previousMatches.map(m => `${m.teamA?.map(p => p.name).join('+')} vs ${m.teamB?.map(p => p.name).join('+')} (${m.scoreA}-${m.scoreB})`));
     }
   } else {
     // Fallback: usa i punteggi dalla classifica attuale
+    const standingA = standings.find(s => s.playerId === t.a.id);
+    const standingB = standings.find(s => s.playerId === t.b.id);
     scoreA = standingA?.points || 0;
     scoreB = standingB?.points || 0;
     totalScore = scoreA + scoreB;
@@ -393,7 +423,7 @@ export default function LogPage() {
             matchday: parseInt(matchday),
             partner: teamA.b.name,
             partnerId: teamA.b.id,
-            opponent: teamLabel(match.teamB, players, standings, match),
+            opponent: teamLabel(match.teamB, players, standings, match, matches),
             status: match.status,
             matchId: match.id
           });
@@ -402,7 +432,7 @@ export default function LogPage() {
             matchday: parseInt(matchday),
             partner: teamA.a.name,
             partnerId: teamA.a.id,
-            opponent: teamLabel(match.teamB, players, standings, match),
+            opponent: teamLabel(match.teamB, players, standings, match, matches),
             status: match.status,
             matchId: match.id
           });
@@ -417,7 +447,7 @@ export default function LogPage() {
             matchday: parseInt(matchday),
             partner: teamB.b.name,
             partnerId: teamB.b.id,
-            opponent: teamLabel(match.teamA, players, standings, match),
+            opponent: teamLabel(match.teamA, players, standings, match, matches),
             status: match.status,
             matchId: match.id
           });
@@ -426,7 +456,7 @@ export default function LogPage() {
             matchday: parseInt(matchday),
             partner: teamB.a.name,
             partnerId: teamB.a.id,
-            opponent: teamLabel(match.teamA, players, standings, match),
+            opponent: teamLabel(match.teamA, players, standings, match, matches),
             status: match.status,
             matchId: match.id
           });
@@ -598,7 +628,7 @@ export default function LogPage() {
                   <div key={match.id} className="border rounded-lg p-3 bg-gray-50">
                     <div className="flex items-center justify-between mb-2">
                       <div className="font-medium text-sm">
-                        {teamLabel(match.teamA, players, standings, match)} vs {teamLabel(match.teamB, players, standings, match)}
+                        {teamLabel(match.teamA, players, standings, match, matches)} vs {teamLabel(match.teamB, players, standings, match, matches)}
                       </div>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(match.status)}`}>
                         {getStatusIcon(match.status)} {match.status}
@@ -608,23 +638,19 @@ export default function LogPage() {
                       const teamA = normalizeTeam(match.teamA);
                       const teamB = normalizeTeam(match.teamB);
                       
-                      let scoreA, scoreB;
+                      // Calcola i punteggi progressivi per questa giornata
+                      const previousMatches = matches.filter(m => 
+                        m.status === 'completed' && 
+                        m.matchday < match.matchday
+                      );
                       
-                      // PRIORITÀ: Usa i punteggi al momento della generazione se disponibili
-                      if (match.generationPoints) {
-                        scoreA = match.generationPoints.teamA.total;
-                        scoreB = match.generationPoints.teamB.total;
-                      } else {
-                        // Fallback: usa i punteggi dalla classifica attuale
-                        const standingA1 = standings.find(s => s.playerId === teamA.a.id);
-                        const standingA2 = standings.find(s => s.playerId === teamA.b.id);
-                        const standingB1 = standings.find(s => s.playerId === teamB.a.id);
-                        const standingB2 = standings.find(s => s.playerId === teamB.b.id);
-                        
-                        scoreA = (standingA1?.points || 0) + (standingA2?.points || 0);
-                        scoreB = (standingB1?.points || 0) + (standingB2?.points || 0);
-                      }
+                      const scoreA1 = calculatePlayerPoints(teamA.a.id, previousMatches);
+                      const scoreA2 = calculatePlayerPoints(teamA.b.id, previousMatches);
+                      const scoreB1 = calculatePlayerPoints(teamB.a.id, previousMatches);
+                      const scoreB2 = calculatePlayerPoints(teamB.b.id, previousMatches);
                       
+                      const scoreA = scoreA1 + scoreA2;
+                      const scoreB = scoreB1 + scoreB2;
                       const diff = Math.abs(scoreA - scoreB);
                       
                       return (
@@ -815,7 +841,7 @@ export default function LogPage() {
                 <div className="bg-gray-50 p-3 rounded">
                   <h3 className="font-medium mb-2">Squadre</h3>
                   <div className="text-sm">
-                    {teamLabel(editingMatch.teamA, players, standings, editingMatch)} vs {teamLabel(editingMatch.teamB, players, standings, editingMatch)}
+                    {teamLabel(editingMatch.teamA, players, standings, editingMatch, matches)} vs {teamLabel(editingMatch.teamB, players, standings, editingMatch, matches)}
                   </div>
                 </div>
                 
