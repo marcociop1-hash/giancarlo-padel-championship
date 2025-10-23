@@ -33,11 +33,14 @@ export async function POST() {
     
     // Cancella tutte le partite esistenti
     const allMatches = await db.collection("matches").get();
-    const batch = db.batch();
-    allMatches.docs.forEach(doc => batch.delete(doc.ref));
-    await batch.commit();
-    
-    console.log(`Cancellate ${allMatches.size} partite esistenti`);
+    if (allMatches.size > 0) {
+      const batch = db.batch();
+      allMatches.docs.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+      console.log(`Cancellate ${allMatches.size} partite esistenti`);
+    } else {
+      console.log('Database già vuoto, procedo con la creazione delle partite');
+    }
     
     // Ripristina le partite con i dati reali
     const realMatches = [
