@@ -295,12 +295,33 @@ export async function POST(req: Request) {
         updatedAt: Timestamp.now()
       };
       
-      // Aggiungi i game e i set se forniti
+      
+      // Aggiungi i game e i set solo se forniti esplicitamente
       if (totalGamesA !== undefined) updateData.totalGamesA = totalGamesA;
       if (totalGamesB !== undefined) updateData.totalGamesB = totalGamesB;
-      if (set1Games) updateData.set1Games = set1Games;
-      if (set2Games) updateData.set2Games = set2Games;
-      if (set3Games) updateData.set3Games = set3Games;
+      
+      // Gestisci i set - converti da oggetto {teamA, teamB} a array [teamA, teamB]
+      if (set1Games !== undefined) {
+        if (set1Games.teamA !== undefined && set1Games.teamB !== undefined) {
+          updateData.set1Games = [set1Games.teamA, set1Games.teamB];
+        } else if (Array.isArray(set1Games)) {
+          updateData.set1Games = set1Games;
+        }
+      }
+      if (set2Games !== undefined) {
+        if (set2Games.teamA !== undefined && set2Games.teamB !== undefined) {
+          updateData.set2Games = [set2Games.teamA, set2Games.teamB];
+        } else if (Array.isArray(set2Games)) {
+          updateData.set2Games = set2Games;
+        }
+      }
+      if (set3Games !== undefined) {
+        if (set3Games.teamA !== undefined && set3Games.teamB !== undefined) {
+          updateData.set3Games = [set3Games.teamA, set3Games.teamB];
+        } else if (Array.isArray(set3Games)) {
+          updateData.set3Games = set3Games;
+        }
+      }
       
       // Usa lo status inviato dal frontend, altrimenti usa "confirmed" come default
       if (status) {

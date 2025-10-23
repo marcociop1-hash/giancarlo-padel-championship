@@ -347,20 +347,24 @@ function optimizeOpponents(
       teamBStrength = scoreB + (gamesB / 100);
     }
     
-    // FASE 4: Calcola penalità per avversari ripetuti
-    let opponentRepeatPenalty = 0;
-    for (const playerA of match.teamA) {
-      for (const playerB of match.teamB) {
-        const opponentKey = pairKey(playerA.id || "", playerB.id || "");
-        if (opponentPairs.has(opponentKey)) {
-          opponentRepeatPenalty += 50; // Penalità per avversari ripetuti
-        }
-      }
+    // FASE 4: Calcola penalità per compagni ripetuti (non avversari)
+    let teammateRepeatPenalty = 0;
+    
+    // Controlla se i compagni della squadra A sono già stati compagni
+    const teamAKey = pairKey(match.teamA[0].id || "", match.teamA[1].id || "");
+    if (opponentPairs.has(teamAKey)) {
+      teammateRepeatPenalty += 1000; // Penalità alta per compagni ripetuti
+    }
+    
+    // Controlla se i compagni della squadra B sono già stati compagni
+    const teamBKey = pairKey(match.teamB[0].id || "", match.teamB[1].id || "");
+    if (opponentPairs.has(teamBKey)) {
+      teammateRepeatPenalty += 1000; // Penalità alta per compagni ripetuti
     }
     
     // Calcola peso finale
     const scoreDifference = Math.abs(teamAStrength - teamBStrength);
-    const weight = (scoreDifference * 100) + opponentRepeatPenalty;
+    const weight = (scoreDifference * 100) + teammateRepeatPenalty;
     
     optimizedMatches.push({
       teamA: match.teamA,
@@ -684,30 +688,40 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
     });
   }
 
-  // NUOVO ALGORITMO IN 4 FASI: Calendario perfetto + Ottimizzazione avversari
+  // NUOVO ALGORITMO: Usa coppie predefinite dal calendario
   let intelligentMatches: MatchCandidate[] = [];
   
   const totalMatchesPlayed = completedMatches.length;
   const currentDayIndex = Math.floor(totalMatchesPlayed / 4);
   
-  console.log(`🎯 ALGORITMO 4 FASI: Giornata ${currentDayIndex + 1} (${totalMatchesPlayed} partite giocate)`);
+  console.log(`🎯 ALGORITMO COPPIE PREDEFINITE: Giornata ${currentDayIndex + 1} (${totalMatchesPlayed} partite giocate)`);
   
-  // FASE 1: Genera calendario perfetto delle coppie (solo per le prime volte)
-  if (totalMatchesPlayed < 60) { // Prime 15 giornate
-    console.log("🎯 FASE 1: Generando calendario perfetto delle coppie");
-    const perfectCalendar = generatePerfectPairingCalendar(playersWithCurrentPoints);
+  // FASE 1: Prova a usare il calendario delle coppie predefinite
+  try {
+    const calendarDoc = await db.collection('pair_calendar').doc('calendar').get();
     
-    if (perfectCalendar.length > currentDayIndex) {
-      const dayMatches = perfectCalendar[currentDayIndex];
-      console.log(`✅ FASE 1 completata: ${dayMatches.length} partite con coppie perfette`);
+    if (calendarDoc.exists) {
+      const calendarData = calendarDoc.data();
+      const calendar = calendarData?.calendar || [];
       
-      // FASE 2-4: Ottimizza avversari per punteggi, game e varietà
-      intelligentMatches = optimizeOpponents(dayMatches, playerScores, playerGames, opponentPairs);
-      console.log(`✅ FASE 2-4 completata: ${intelligentMatches.length} partite ottimizzate`);
+      if (calendar.length > currentDayIndex) {
+        const dayPairs = calendar[currentDayIndex];
+        console.log(`✅ Calendario trovato: Giornata ${currentDayIndex + 1} con ${dayPairs.pairs.length} coppie predefinite`);
+        
+        // FASE 2-4: Ottimizza avversari per punteggi, game e varietà
+        intelligentMatches = optimizeOpponents(dayPairs.pairs, playerScores, playerGames, opponentPairs);
+        console.log(`✅ FASE 2-4 completata: ${intelligentMatches.length} partite ottimizzate`);
+      } else {
+        console.log(`⚠️ Calendario non ha abbastanza giornate: ${calendar.length} disponibili, giornata ${currentDayIndex + 1} richiesta`);
+      }
+    } else {
+      console.log("⚠️ Calendario delle coppie non trovato");
     }
+  } catch (error) {
+    console.log("⚠️ Errore nel recupero del calendario:", error);
   }
   
-  // Fallback: Se il calendario perfetto non funziona, usa algoritmo intelligente
+  // Fallback: Se il calendario non funziona, usa algoritmo intelligente tradizionale
   if (intelligentMatches.length === 0) {
     console.log("🔄 Fallback: Usando algoritmo intelligente tradizionale");
     intelligentMatches = generateIntelligentPairings(

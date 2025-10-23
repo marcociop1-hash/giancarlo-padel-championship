@@ -9,6 +9,8 @@ import {
   query,
   orderBy,
   where,
+  doc,
+  updateDoc
 } from "firebase/firestore";
 
 /* ============ Helpers squadra (label) ============ */
@@ -61,6 +63,10 @@ function calculatePlayerPoints(playerId, matches) {
 function teamLabel(team, players = [], standings = [], match = null, allMatches = []) {
   const t = normalizeTeam(team);
   
+  // Trova sempre i standings per i game totali
+  const standingA = standings.find(s => s.playerId === t.a.id);
+  const standingB = standings.find(s => s.playerId === t.b.id);
+  
   // Calcola i punteggi progressivi per questa giornata specifica
   let scoreA, scoreB, totalScore;
   
@@ -83,8 +89,6 @@ function teamLabel(team, players = [], standings = [], match = null, allMatches 
     }
   } else {
     // Fallback: usa i punteggi dalla classifica attuale
-    const standingA = standings.find(s => s.playerId === t.a.id);
-    const standingB = standings.find(s => s.playerId === t.b.id);
     scoreA = standingA?.points || 0;
     scoreB = standingB?.points || 0;
     totalScore = scoreA + scoreB;
@@ -118,6 +122,7 @@ function getStatusColor(status) {
     case 'scheduled': return 'bg-blue-100 text-blue-800';
     case 'da recuperare': return 'bg-red-100 text-red-800';
     case 'incomplete': return 'bg-red-100 text-red-800';
+    case 'future': return 'bg-blue-100 text-blue-800';
     default: return 'bg-gray-100 text-gray-800';
   }
 }
@@ -129,6 +134,7 @@ function getStatusIcon(status) {
     case 'scheduled': return '📅';
     case 'da recuperare': return '🔄';
     case 'incomplete': return '❌';
+    case 'future': return '🔮';
     default: return '❓';
   }
 }
@@ -139,6 +145,7 @@ export default function LogPage() {
   const [standings, setStandings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [pairCalendar, setPairCalendar] = useState(null);
   
   // Stato per il modal di modifica partita
   const [editingMatch, setEditingMatch] = useState(null);
@@ -211,6 +218,26 @@ export default function LogPage() {
     }
   }, []);
 
+  const fetchPairCalendar = useCallback(async () => {
+    try {
+      console.log('🔄 Caricando calendario coppie...');
+      const response = await fetch('/api/admin/get-pair-calendar');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.ok && data.calendar) {
+          console.log('📅 Calendario coppie caricato:', data.calendar.length, 'giornate');
+          setPairCalendar(data.calendar);
+        } else {
+          console.log('⚠️ Calendario coppie non disponibile');
+        }
+      } else {
+        console.log('⚠️ Errore nel caricamento del calendario coppie');
+      }
+    } catch (e) {
+      console.log("⚠️ Errore caricamento calendario coppie:", e);
+    }
+  }, []);
+
   // Funzione per aprire il modal di modifica
   const openEditModal = useCallback((match) => {
     setEditingMatch(match);
@@ -221,16 +248,16 @@ export default function LogPage() {
       scoreA: match.scoreA !== undefined ? match.scoreA : '',
       scoreB: match.scoreB !== undefined ? match.scoreB : '',
       set1Games: {
-        teamA: match.set1Games?.teamA !== undefined ? match.set1Games.teamA : '',
-        teamB: match.set1Games?.teamB !== undefined ? match.set1Games.teamB : ''
+        teamA: Array.isArray(match.set1Games) && match.set1Games.length === 2 ? match.set1Games[0] : '',
+        teamB: Array.isArray(match.set1Games) && match.set1Games.length === 2 ? match.set1Games[1] : ''
       },
       set2Games: {
-        teamA: match.set2Games?.teamA !== undefined ? match.set2Games.teamA : '',
-        teamB: match.set2Games?.teamB !== undefined ? match.set2Games.teamB : ''
+        teamA: Array.isArray(match.set2Games) && match.set2Games.length === 2 ? match.set2Games[0] : '',
+        teamB: Array.isArray(match.set2Games) && match.set2Games.length === 2 ? match.set2Games[1] : ''
       },
       set3Games: {
-        teamA: match.set3Games?.teamA !== undefined ? match.set3Games.teamA : '',
-        teamB: match.set3Games?.teamB !== undefined ? match.set3Games.teamB : ''
+        teamA: Array.isArray(match.set3Games) && match.set3Games.length === 2 ? match.set3Games[0] : '',
+        teamB: Array.isArray(match.set3Games) && match.set3Games.length === 2 ? match.set3Games[1] : ''
       },
       status: match.status || 'scheduled'
     });
@@ -252,102 +279,68 @@ export default function LogPage() {
     });
   }, []);
 
-  // Funzione per salvare le modifiche
+  // Funzione per salvare le modifiche - VERSIONE SICURA
   const saveMatchChanges = useCallback(async () => {
     if (!editingMatch) return;
     
     setSaving(true);
     try {
-      // Ottieni il token di autenticazione Firebase
-      const user = auth.currentUser;
-      if (!user) {
-        alert('Errore: Utente non autenticato');
-        setSaving(false);
-        return;
+      // Aggiorna solo i campi specifici, preservando tutto il resto
+      const matchRef = doc(db, 'matches', editingMatch.id);
+      const updateData = {};
+      
+      // Aggiorna solo se i valori sono diversi
+      if (editForm.place !== editingMatch.place) {
+        updateData.place = editForm.place;
+      }
+      if (editForm.date !== editingMatch.date) {
+        updateData.date = editForm.date;
+      }
+      if (editForm.time !== editingMatch.time) {
+        updateData.time = editForm.time;
       }
       
-      const token = await user.getIdToken();
+      // Aggiungi timestamp solo se ci sono modifiche
+      if (Object.keys(updateData).length > 0) {
+        updateData.updatedAt = new Date();
+        await updateDoc(matchRef, updateData);
+      }
       
-      const response = await fetch('/api/matches/update-details', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          matchId: editingMatch.id,
-          place: editForm.place,
-          date: editForm.date,
-          time: editForm.time,
-          ...(editForm.scoreA && { scoreA: parseInt(editForm.scoreA) }),
-          ...(editForm.scoreB && { scoreB: parseInt(editForm.scoreB) }),
-          status: "completed", // Forza sempre completed quando si modifica dal log
-          // Calcola automaticamente i game totali dai set
-          ...(editForm.set1Games.teamA || editForm.set1Games.teamB || editForm.set2Games.teamA || editForm.set2Games.teamB || editForm.set3Games.teamA || editForm.set3Games.teamB ? {
-            totalGamesA: (parseInt(editForm.set1Games.teamA) || 0) + (parseInt(editForm.set2Games.teamA) || 0) + (parseInt(editForm.set3Games.teamA) || 0),
-            totalGamesB: (parseInt(editForm.set1Games.teamB) || 0) + (parseInt(editForm.set2Games.teamB) || 0) + (parseInt(editForm.set3Games.teamB) || 0)
-          } : {}),
-          ...(editForm.set1Games.teamA || editForm.set1Games.teamB ? {
-            set1Games: {
-              ...(editForm.set1Games.teamA && { teamA: parseInt(editForm.set1Games.teamA) }),
-              ...(editForm.set1Games.teamB && { teamB: parseInt(editForm.set1Games.teamB) })
-            }
-          } : {}),
-          ...(editForm.set2Games.teamA || editForm.set2Games.teamB ? {
-            set2Games: {
-              ...(editForm.set2Games.teamA && { teamA: parseInt(editForm.set2Games.teamA) }),
-              ...(editForm.set2Games.teamB && { teamB: parseInt(editForm.set2Games.teamB) })
-            }
-          } : {}),
-          ...(editForm.set3Games.teamA || editForm.set3Games.teamB ? {
-            set3Games: {
-              ...(editForm.set3Games.teamA && { teamA: parseInt(editForm.set3Games.teamA) }),
-              ...(editForm.set3Games.teamB && { teamB: parseInt(editForm.set3Games.teamB) })
-            }
-          } : {})
-        })
-      });
-
-      if (response.ok) {
-        alert('Partita aggiornata con successo!');
-        closeEditModal();
-        fetchMatches(); // Ricarica le partite
-        
-        // Se sono stati modificati i risultati (scoreA, scoreB), aggiorna la classifica
-        if (editForm.scoreA !== '' || editForm.scoreB !== '') {
-          try {
-            console.log('🔄 Aggiornando classifica dopo modifica risultati...');
-            const classificaResponse = await fetch('/api/classifica?refresh=true');
-            if (classificaResponse.ok) {
-              console.log('✅ Classifica aggiornata con successo');
-              fetchStandings(); // Ricarica anche la classifica locale
-            } else {
-              console.warn('⚠️ Errore nell\'aggiornamento della classifica');
-            }
-          } catch (classificaError) {
-            console.error('❌ Errore nell\'aggiornamento della classifica:', classificaError);
+      alert('Partita aggiornata con successo!');
+      closeEditModal();
+      
+      // Ricarica i dati
+      await fetchMatches();
+      
+      // Se la partita è stata completata, aggiorna il calendario per rimuovere le partite future
+      if (editForm.status === 'completed' && editingMatch.status !== 'completed') {
+        // La partita è stata completata, aggiorna il calendario
+        try {
+          const response = await fetch('/api/admin/update-calendar-on-completion', { method: 'POST' });
+          if (response.ok) {
+            await fetchPairCalendar();
           }
+        } catch (error) {
+          console.error('Errore nell\'aggiornamento del calendario:', error);
         }
-      } else {
-        const errorData = await response.json();
-        alert(`Errore: ${errorData.error || 'Errore sconosciuto'}`);
       }
+      
     } catch (error) {
       console.error('Errore nel salvataggio:', error);
       alert('Errore nel salvataggio delle modifiche');
     } finally {
       setSaving(false);
     }
-  }, [editingMatch, editForm, closeEditModal, fetchMatches]);
+  }, [editingMatch, editForm, closeEditModal, fetchMatches, fetchPairCalendar]);
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchMatches(), fetchPlayers(), fetchStandings()]);
+      await Promise.all([fetchMatches(), fetchPlayers(), fetchStandings(), fetchPairCalendar()]);
       setLoading(false);
     };
     loadData();
-  }, [fetchMatches, fetchPlayers, fetchStandings]);
+  }, [fetchMatches, fetchPlayers, fetchStandings, fetchPairCalendar]);
 
   // Raggruppa le partite per giornata (campionato) o round (supercoppa)
   const matchesByMatchday = useMemo(() => {
@@ -464,23 +457,66 @@ export default function LogPage() {
       });
     });
     
+    // Aggiungi le partite future dal calendario (solo giornate 3-15)
+    if (pairCalendar && pairCalendar.length > 0) {
+      pairCalendar.forEach(day => {
+        // Mostra solo le giornate future (3-15), non quelle già giocate (1-2)
+        if (day.day > 2) {
+          day.pairs.forEach(pair => {
+            if (pair.teamA && pair.teamA.length === 2) {
+              const player1 = pair.teamA[0];
+              const player2 = pair.teamA[1];
+              
+              if (pairings[player1.id] && pairings[player2.id]) {
+                pairings[player1.id].pairings.push({
+                  matchday: day.day,
+                  partner: player2.name,
+                  partnerId: player2.id,
+                  opponent: 'Da assegnare',
+                  status: 'future',
+                  matchId: null,
+                  isFuture: true
+                });
+                
+                pairings[player2.id].pairings.push({
+                  matchday: day.day,
+                  partner: player1.name,
+                  partnerId: player1.id,
+                  opponent: 'Da assegnare',
+                  status: 'future',
+                  matchId: null,
+                  isFuture: true
+                });
+              }
+            }
+          });
+        }
+      });
+    }
+    
     // Ordina gli accoppiamenti per giornata
     Object.values(pairings).forEach(player => {
       player.pairings.sort((a, b) => a.matchday - b.matchday);
     });
     
     return pairings;
-  }, [matchesByMatchday, players]);
+  }, [matchesByMatchday, players, pairCalendar]);
 
-  // Analizza accoppiamenti ripetuti (stesso partner più volte)
+  // Analizza accoppiamenti ripetuti (solo dalle partite completate, non dal calendario futuro)
   const repeatedPairings = useMemo(() => {
     const repeated = [];
+    const processedPairs = new Set(); // Per evitare duplicati bidirezionali
     
     Object.entries(playerPairings).forEach(([playerId, player]) => {
       const partnerCounts = {};
       
-      // Conta quante volte ogni giocatore ha giocato con ogni partner
+      // Conta SOLO le partite completate (non quelle future dal calendario)
       player.pairings.forEach(pairing => {
+        // Salta le partite future dal calendario
+        if (pairing.isFuture) {
+          return;
+        }
+        
         const partnerId = pairing.partnerId;
         if (!partnerCounts[partnerId]) {
           partnerCounts[partnerId] = {
@@ -496,14 +532,20 @@ export default function LogPage() {
       // Trova i partner con cui ha giocato più di una volta
       Object.entries(partnerCounts).forEach(([partnerId, data]) => {
         if (data.count > 1) {
-          repeated.push({
-            playerId,
-            playerName: player.name,
-            partnerId,
-            partnerName: data.partnerName,
-            count: data.count,
-            matchdays: data.matchdays.sort((a, b) => a - b)
-          });
+          // Crea una chiave unica per la coppia (ordinata per evitare duplicati)
+          const pairKey = [playerId, partnerId].sort().join('-');
+          
+          if (!processedPairs.has(pairKey)) {
+            processedPairs.add(pairKey);
+            repeated.push({
+              playerId,
+              playerName: player.name,
+              partnerId,
+              partnerName: data.partnerName,
+              count: data.count,
+              matchdays: data.matchdays.sort((a, b) => a - b)
+            });
+          }
         }
       });
     });
@@ -607,6 +649,31 @@ export default function LogPage() {
         </div>
       </div>
 
+      {/* Calendario Coppie Predefinite */}
+      {pairCalendar && pairCalendar.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <h2 className="text-lg font-semibold text-emerald-800 mb-3">📅 Calendario Coppie Predefinite</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            {pairCalendar.map((day, index) => (
+              <div key={index} className="border rounded-lg p-3 bg-gray-50">
+                <h3 className="font-semibold text-gray-800 mb-2 text-sm">Giornata {day.day}</h3>
+                <div className="space-y-1">
+                  {day.pairs.map((pair, pairIndex) => (
+                    <div key={pairIndex} className="text-xs">
+                      <div className="font-medium text-blue-700">
+                        {Array.isArray(pair.teamA) 
+                          ? pair.teamA.map(p => p.name).join(' + ')
+                          : pair.teamA}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Elenco giornate e match */}
         <div className="space-y-4">
@@ -625,7 +692,7 @@ export default function LogPage() {
               
               <div className="p-4 space-y-3">
                 {matchList.map((match) => (
-                  <div key={match.id} className="border rounded-lg p-3 bg-gray-50">
+                  <div key={`${match.id}-${match.updatedAt || match.createdAt || Date.now()}`} className="border rounded-lg p-3 bg-gray-50">
                     <div className="flex items-center justify-between mb-2">
                       <div className="font-medium text-sm">
                         {teamLabel(match.teamA, players, standings, match, matches)} vs {teamLabel(match.teamB, players, standings, match, matches)}
@@ -678,13 +745,13 @@ export default function LogPage() {
                           Risultato: {match.scoreA} - {match.scoreB}
                         </div>
                       )}
-                      {match.set1Games && match.set2Games && match.set3Games && (
+                      {match.set1Games && (
                         <div className="text-xs">
                           <span className="font-medium">Game per set:</span> 
                           <span className="ml-1">
-                            Set1: {match.set1Games[0]}-{match.set1Games[1]} | 
-                            Set2: {match.set2Games[0]}-{match.set2Games[1]} | 
-                            Set3: {match.set3Games[0]}-{match.set3Games[1]}
+                            {Array.isArray(match.set1Games) && match.set1Games.length === 2 && `Set1: ${match.set1Games[0]}-${match.set1Games[1]}`}
+                            {Array.isArray(match.set2Games) && match.set2Games.length === 2 && ` | Set2: ${match.set2Games[0]}-${match.set2Games[1]}`}
+                            {Array.isArray(match.set3Games) && match.set3Games.length === 2 && ` | Set3: ${match.set3Games[0]}-${match.set3Games[1]}`}
                           </span>
                         </div>
                       )}
@@ -730,27 +797,28 @@ export default function LogPage() {
               </div>
               
               <div className="p-4 space-y-2">
-                {player.pairings.map((pairing, index) => (
-                  <div key={index} className="border rounded-lg p-3 bg-gray-50">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="font-medium text-sm">
-                        Giornata {pairing.matchday}
-                      </div>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(pairing.status)}`}>
-                        {getStatusIcon(pairing.status)}
-                      </span>
-                    </div>
-                    
-                    <div className="text-xs text-gray-600 space-y-1">
-                      <div>
-                        <span className="font-medium">Compagno:</span> {pairing.partner}
-                      </div>
-                      <div>
-                        <span className="font-medium">Avversari:</span> {pairing.opponent}
-                      </div>
-                    </div>
+            {player.pairings.map((pairing, index) => (
+              <div key={index} className={`border rounded-lg p-3 ${pairing.isFuture ? 'bg-blue-50 border-blue-200' : 'bg-gray-50'}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <div className="font-medium text-sm">
+                    Giornata {pairing.matchday}
+                    {pairing.isFuture && <span className="ml-2 text-blue-600 text-xs">(Futura)</span>}
                   </div>
-                ))}
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(pairing.status)}`}>
+                    {getStatusIcon(pairing.status)}
+                  </span>
+                </div>
+                
+                <div className="text-xs text-gray-600 space-y-1">
+                  <div>
+                    <span className="font-medium">Compagno:</span> {pairing.partner}
+                  </div>
+                  <div>
+                    <span className="font-medium">Avversari:</span> {pairing.opponent}
+                  </div>
+                </div>
+              </div>
+            ))}
               </div>
             </div>
           ))}
