@@ -29,13 +29,13 @@ export async function GET() {
     const matches = matchesSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
-    }));
+    })) as any[];
     
     // Analizza gli accoppiamenti esistenti
     const existingPairings = [];
     const usedPairs = new Set<string>();
     
-    matches.forEach(match => {
+    matches.forEach((match: any) => {
       if (match.teamA && match.teamB && match.teamA.length === 2 && match.teamB.length === 2) {
         // Coppia team A
         const pairA = [match.teamA[0].id, match.teamA[1].id].sort().join('-');
