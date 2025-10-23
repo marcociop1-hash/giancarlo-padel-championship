@@ -146,6 +146,11 @@ export default function AdminPage() {
   // Reset torneo (server API)
   const [resetState, setResetState] = useState("idle"); // "idle" | "loading" | "success" | "error"
   const [resetMsg, setResetMsg] = useState("");
+
+  // Cancella ultima giornata
+  const [deleteLastState, setDeleteLastState] = useState("idle"); // "idle" | "loading" | "success" | "error"
+  const [deleteLastMsg, setDeleteLastMsg] = useState("");
+  const [confirmDeleteLast, setConfirmDeleteLast] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [wipeMatches, setWipeMatches] = useState(true); // di default reset totale
 
@@ -778,6 +783,35 @@ export default function AdminPage() {
     }
   }, [genEndpointUsed, fetchConfirmed, confirmGenerate]);
 
+  // Cancella ultima giornata
+  const handleDeleteLastMatchday = useCallback(async () => {
+    if (!confirmDeleteLast) {
+      setConfirmDeleteLast(true);
+      alert("ATTENZIONE: Stai per cancellare l'ultima giornata generata. Clicca di nuovo per confermare.");
+      return;
+    }
+    
+    setDeleteLastState("loading");
+    setDeleteLastMsg("");
+    setConfirmDeleteLast(false);
+    try {
+      const res = await fetch("/api/admin/delete-last-matchday", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setDeleteLastState("success");
+        setDeleteLastMsg(data?.message || "Ultima giornata cancellata con successo");
+        fetchConfirmed();
+        fetchScheduled();
+      } else {
+        setDeleteLastState("error");
+        setDeleteLastMsg((data && (data.message || data.error)) || `HTTP ${res.status}`);
+      }
+    } catch (e) {
+      setDeleteLastState("error");
+      setDeleteLastMsg((e && (e.message || String(e))) || "Errore di rete");
+    }
+  }, [fetchConfirmed, fetchScheduled, confirmDeleteLast]);
+
   // Debug: Genera partite + risultati randomi
   const handleGenerateWithResults = useCallback(async () => {
     setDebugGenState("loading");
@@ -1229,6 +1263,43 @@ export default function AdminPage() {
         </div>
         <div className="text-xs text-gray-500">
           Endpoint: <code>{genEndpointUsed}</code>
+        </div>
+      </section>
+
+      {/* ====== CANCELLA ULTIMA GIORNATA ====== */}
+      <section className="rounded-2xl border bg-red-50 p-4 space-y-3">
+        <h2 className="text-lg font-medium text-red-800">🗑️ Cancella ultima giornata</h2>
+        <p className="text-sm text-red-700">
+          <b>ATTENZIONE:</b> Questo pulsante cancella tutte le partite dell'ultima giornata generata.
+          Utile per correggere accoppiamenti sbagliati.
+        </p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleDeleteLastMatchday}
+            disabled={deleteLastState === "loading"}
+            className={`rounded-xl px-4 py-2 text-white ${
+              deleteLastState === "loading"
+                ? "bg-gray-400 cursor-not-allowed"
+                : confirmDeleteLast
+                ? "bg-red-600 hover:bg-red-700"
+                : "bg-red-500 hover:bg-red-600"
+            }`}
+          >
+            {deleteLastState === "loading" 
+              ? "Cancellazione…" 
+              : confirmDeleteLast 
+              ? "Conferma: Cancella Ultima Giornata" 
+              : "Cancella ultima giornata"}
+          </button>
+          {deleteLastState === "success" && (
+            <span className="text-green-700 text-sm">✅ {deleteLastMsg}</span>
+          )}
+          {deleteLastState === "error" && (
+            <span className="text-red-700 text-sm">❌ {deleteLastMsg}</span>
+          )}
+          {confirmDeleteLast && (
+            <span className="text-red-700 text-sm">⚠️ Clicca di nuovo per confermare la cancellazione</span>
+          )}
         </div>
       </section>
 
