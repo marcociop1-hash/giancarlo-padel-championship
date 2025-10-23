@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test:env": "node scripts/start-test-env.js",
+    "test:emulator": "firebase emulators:start --config firebase.test.json",
+    "test:data": "node scripts/seed-test-data.js"
   },
   "dependencies": {
     "critters": "^0.0.23",
