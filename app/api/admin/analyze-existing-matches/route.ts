@@ -32,7 +32,7 @@ export async function GET() {
     })) as any[];
     
     // Analizza gli accoppiamenti esistenti
-    const existingPairings = [];
+    const existingPairings: any[] = [];
     const usedPairs = new Set<string>();
     
     matches.forEach((match: any) => {
