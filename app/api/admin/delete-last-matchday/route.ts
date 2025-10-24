@@ -34,7 +34,7 @@ export async function POST() {
     const allMatches = allMatchesSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
-    }));
+    })) as any[];
     
     if (allMatches.length === 0) {
       return NextResponse.json({
