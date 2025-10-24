@@ -126,7 +126,7 @@ export async function POST() {
 }
 
 function generateCompleteCalendar(players: any[], existingPairings: any[], usedPairs: Set<string>) {
-  const calendar = [];
+  const calendar: any[] = [];
   
   // Aggiungi le giornate esistenti
   existingPairings.forEach(pairing => {
