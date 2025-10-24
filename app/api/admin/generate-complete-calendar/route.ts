@@ -146,7 +146,7 @@ function generateCompleteCalendar(players: any[], existingPairings: any[], usedP
   console.log(`Giornate esistenti: ${maxDay}, Giornate da generare: ${remainingDays}`);
   
   // Genera tutte le possibili coppie
-  const allPossiblePairs = [];
+  const allPossiblePairs: any[] = [];
   for (let i = 0; i < players.length; i++) {
     for (let j = i + 1; j < players.length; j++) {
       allPossiblePairs.push([players[i], players[j]]);
