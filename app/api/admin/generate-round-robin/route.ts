@@ -18,11 +18,11 @@ function adminDb() {
 // Algoritmo Round-Robin semplificato per 16 giocatori
 function generateRoundRobinSchedule(players: any[]) {
   const n = players.length; // 16 giocatori
-  const schedule = [];
+  const schedule: any[] = [];
   
   // Per 16 giocatori, abbiamo 15 giornate (n-1)
   for (let round = 0; round < n - 1; round++) {
-    const dayPairs = [];
+    const dayPairs: any[] = [];
     
     // Genera le 8 coppie per questa giornata
     for (let i = 0; i < n / 2; i++) {
@@ -55,7 +55,7 @@ export async function POST() {
     
     // 1. Ottieni tutti i giocatori
     const playersSnap = await db.collection('players').get();
-    const players = playersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const players = playersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
     
     console.log(`Trovati ${players.length} giocatori`);
     
@@ -112,10 +112,10 @@ export async function POST() {
     console.log(`Giornate da aggiungere: ${newSchedule.length} (dalla 3 alla 15)`);
     
     // 5. Usa l'algoritmo Round-Robin per le giornate 3-15
-    const validNewSchedule = [];
+    const validNewSchedule: any[] = [];
     
     // Genera tutte le coppie possibili per 16 giocatori
-    const allPossiblePairs = [];
+    const allPossiblePairs: any[] = [];
     for (let i = 0; i < players.length; i++) {
       for (let j = i + 1; j < players.length; j++) {
         const key = [players[i].id, players[j].id].sort().join('-');
@@ -131,7 +131,7 @@ export async function POST() {
     const remainingPairs = [...allPossiblePairs];
     
     for (let day = 3; day <= 15; day++) {
-      const dayPairs = [];
+      const dayPairs: any[] = [];
       const usedInDay = new Set();
       
       // Scegli 8 coppie per questa giornata
@@ -164,8 +164,8 @@ export async function POST() {
     console.log(`Giornate generate: ${validNewSchedule.length}`);
     
     // 6. Crea le prime due giornate con le coppie già giocate
-    const day1Pairs = [];
-    const day2Pairs = [];
+    const day1Pairs: any[] = [];
+    const day2Pairs: any[] = [];
     
     filteredMatches.forEach(doc => {
       const match = doc.data();

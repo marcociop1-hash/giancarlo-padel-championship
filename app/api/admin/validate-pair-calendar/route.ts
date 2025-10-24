@@ -35,7 +35,7 @@ export async function GET() {
     
     // Verifica accoppiamenti ripetuti
     const usedPairs = new Set<string>();
-    const repeatedPairs = [];
+    const repeatedPairs: any[] = [];
     
     for (const day of calendar) {
       for (const pair of day.pairs) {

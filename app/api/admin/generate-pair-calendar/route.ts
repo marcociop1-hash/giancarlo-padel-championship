@@ -129,7 +129,7 @@ function generatePairCalendar(players: any[]) {
 }
 
 function generateDayPairsFromAvailable(allPossiblePairs: any[][], usedPairs: Set<string>, day: number) {
-  const pairs = [];
+  const pairs: any[] = [];
   const usedPlayers = new Set<string>();
   
   // Trova 4 coppie non usate per questa giornata

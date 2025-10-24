@@ -45,7 +45,7 @@ export async function POST() {
     const allMatches = matchesSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
-    }));
+    })) as any[];
     
     // Filtra solo le partite del campionato
     const existingMatches = allMatches.filter(match => 
@@ -55,7 +55,7 @@ export async function POST() {
     console.log(`Trovate ${existingMatches.length} partite esistenti del campionato`);
     
     // 3. Crea il calendario con le coppie esatte
-    const calendar = [];
+    const calendar: any[] = [];
     
     // Giornata 1 - Coppie esatte fornite
     const giornata1 = {
