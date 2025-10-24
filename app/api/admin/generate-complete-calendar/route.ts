@@ -61,7 +61,7 @@ export async function POST() {
     
     // 3. Analizza gli accoppiamenti esistenti
     const usedPairs = new Set<string>();
-    const existingPairings = [];
+    const existingPairings: any[] = [];
     
     existingMatches.forEach(match => {
       if (match.teamA && match.teamB && match.teamA.length === 2 && match.teamB.length === 2) {
