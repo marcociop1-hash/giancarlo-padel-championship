@@ -137,7 +137,28 @@ export default function AdminPage() {
   const [genState, setGenState] = useState("idle"); // "idle" | "loading" | "success" | "error"
   const [genMsg, setGenMsg] = useState("");
   const [confirmGenerate, setConfirmGenerate] = useState(false);
+
+  // Stati per controlli calendario
+  const [calendarExists, setCalendarExists] = useState(false);
+  const [confirmGenerateCalendar, setConfirmGenerateCalendar] = useState(false);
+  const [confirmDeleteCalendar, setConfirmDeleteCalendar] = useState(false);
+  const [confirmGenerateRoundRobin, setConfirmGenerateRoundRobin] = useState(false);
+  const [confirmCheckPairings, setConfirmCheckPairings] = useState(false);
+  const [confirmViewCalendar, setConfirmViewCalendar] = useState(false);
+  const [confirmValidateCalendar, setConfirmValidateCalendar] = useState(false);
   const genEndpointUsed = "/api/admin/genera-giornata";
+
+  // Funzione per verificare se esiste già un calendario
+  const checkCalendarExists = useCallback(async () => {
+    try {
+      const response = await fetch('/api/admin/get-pair-calendar');
+      const data = await response.json();
+      setCalendarExists(data.ok && data.calendar && data.calendar.length > 0);
+    } catch (error) {
+      console.error('Errore nel controllo calendario:', error);
+      setCalendarExists(false);
+    }
+  }, []);
 
   // Debug: Generazione partite + risultati
   const [debugGenState, setDebugGenState] = useState("idle"); // "idle" | "loading" | "success" | "error"
@@ -325,7 +346,8 @@ export default function AdminPage() {
     fetchSupercoppaMatches();
     fetchRecoveryMatches();
     fetchFrozenMatchdays();
-  }, [fetchConfirmed, fetchScheduled, fetchPlayers, fetchSupercoppaMatches, fetchRecoveryMatches, fetchFrozenMatchdays]);
+    checkCalendarExists();
+  }, [fetchConfirmed, fetchScheduled, fetchPlayers, fetchSupercoppaMatches, fetchRecoveryMatches, fetchFrozenMatchdays, checkCalendarExists]);
 
   // Dropdown risultati ammessi
   const allowed = ["3-0", "2-1", "1-2", "0-3"];
@@ -1266,119 +1288,6 @@ export default function AdminPage() {
         </div>
       </section>
 
-      {/* ====== CALENDARIO COPPIE ====== */}
-      <section className="rounded-2xl border bg-blue-50 p-4 space-y-3">
-        <h2 className="text-lg font-medium text-blue-800">📅 Calendario Coppie Predefinite</h2>
-        <p className="text-sm text-blue-700">
-          Genera un calendario semplice con le coppie esatte della giornata 1 e le partite già giocate della giornata 2.
-          Calendario piccolo e pulito per visualizzazione.
-        </p>
-        <div className="flex items-center gap-3">
-             <button
-               onClick={async () => {
-                 try {
-                   const response = await fetch('/api/admin/generate-correct-calendar', { method: 'POST' });
-                   const data = await response.json();
-                   if (data.ok) {
-                     alert(`✅ Calendario corretto generato!\n\n${data.message}\n\nGiornata 1: ${data.day1Pairs} coppie\nGiornata 2: ${data.day2Pairs} coppie\n\nOra puoi visualizzare il calendario nella pagina LOG.`);
-                   } else {
-                     alert('❌ Errore: ' + (data.error || 'Errore sconosciuto'));
-                   }
-                 } catch (e) {
-                   alert('❌ Errore: ' + e.message);
-                 }
-               }}
-               className="rounded-xl px-4 py-2 bg-blue-600 text-white hover:bg-blue-700"
-             >
-               Genera Calendario Corretto
-             </button>
-             
-             <button
-               onClick={async () => {
-                 try {
-                   const response = await fetch('/api/admin/delete-pair-calendar', { method: 'POST' });
-                   const data = await response.json();
-                   if (data.ok) {
-                     alert(`✅ Calendario cancellato!\n\n${data.message}`);
-                   } else {
-                     alert('❌ Errore: ' + (data.error || 'Errore sconosciuto'));
-                   }
-                 } catch (e) {
-                   alert('❌ Errore: ' + e.message);
-                 }
-               }}
-               className="rounded-xl px-4 py-2 bg-red-600 text-white hover:bg-red-700"
-             >
-               Cancella Calendario
-             </button>
-             
-             <button
-               onClick={async () => {
-                 try {
-                   const response = await fetch('/api/admin/generate-round-robin', { method: 'POST' });
-                   const data = await response.json();
-                   if (data.ok) {
-                     alert(`✅ Calendario Round-Robin generato!\n\n${data.message}\n\nGiornate: ${data.stats.totalDays}\nCoppie: ${data.stats.totalPairs}\nDuplicati: ${data.stats.duplicates}\nValido: ${data.stats.isValid ? 'SÌ' : 'NO'}`);
-                   } else {
-                     alert('❌ Errore: ' + (data.error || 'Errore sconosciuto'));
-                   }
-                 } catch (e) {
-                   alert('❌ Errore: ' + e.message);
-                 }
-               }}
-               className="rounded-xl px-4 py-2 bg-green-600 text-white hover:bg-green-700"
-             >
-               Genera Round-Robin Corretto
-             </button>
-             
-             <button
-               onClick={async () => {
-                 try {
-                   const response = await fetch('/api/admin/check-pairings');
-                   const data = await response.json();
-                   if (data.ok) {
-                     alert(`📊 Analisi Accoppiamenti:\n\nGiornate: ${data.stats.totalDays}\nCoppie totali: ${data.stats.totalPairs}\nDuplicati: ${data.stats.duplicates}\n\n${data.duplicates.length > 0 ? '⚠️ Trovati duplicati!' : '✅ Nessun duplicato!'}`);
-                   } else {
-                     alert('❌ Errore: ' + (data.error || 'Errore sconosciuto'));
-                   }
-                 } catch (e) {
-                   alert('❌ Errore: ' + e.message);
-                 }
-               }}
-               className="rounded-xl px-4 py-2 bg-yellow-600 text-white hover:bg-yellow-700"
-             >
-               Controlla Accoppiamenti
-             </button>
-          <button
-            onClick={() => window.open('/admin/log', '_blank')}
-            className="rounded-xl px-4 py-2 bg-purple-600 text-white hover:bg-purple-700"
-          >
-            Visualizza Calendario
-          </button>
-          <button
-            onClick={async () => {
-              try {
-                const response = await fetch('/api/admin/validate-pair-calendar');
-                const data = await response.json();
-                if (data.ok) {
-                  if (data.isValid) {
-                    alert(`✅ ${data.message}`);
-                  } else {
-                    alert(`❌ ${data.message}\n\nCoppie ripetute:\n${data.repeatedPairs.map(r => `Giornata ${r.day}: ${r.players}`).join('\n')}`);
-                  }
-                } else {
-                  alert('❌ Errore: ' + (data.error || 'Errore sconosciuto'));
-                }
-              } catch (e) {
-                alert('❌ Errore: ' + e.message);
-              }
-            }}
-            className="rounded-xl px-4 py-2 bg-orange-600 text-white hover:bg-orange-700"
-          >
-            Valida Calendario
-          </button>
-        </div>
-      </section>
 
       {/* ====== CANCELLA ULTIMA GIORNATA ====== */}
       <section className="rounded-2xl border bg-red-50 p-4 space-y-3">
@@ -2099,6 +2008,232 @@ export default function AdminPage() {
           {advanceErr && <div className="mt-3 text-sm text-red-600">Errore: {advanceErr}</div>}
         </div>
       )}
+
+      {/* ====== CALENDARIO COPPIE PREDEFINITE (IN BASSO) ====== */}
+      <section className="rounded-2xl border bg-blue-50 p-4 space-y-3">
+        <h2 className="text-lg font-medium text-blue-800">📅 Calendario Coppie Predefinite</h2>
+        <p className="text-sm text-blue-700">
+          Genera un calendario semplice con le coppie esatte della giornata 1 e le partite già giocate della giornata 2.
+          Calendario piccolo e pulito per visualizzazione.
+        </p>
+        
+        {calendarExists && (
+          <div className="rounded-lg border border-orange-200 bg-orange-50 p-3">
+            <p className="text-sm text-orange-700">
+              ⚠️ <b>Attenzione:</b> Esiste già un calendario. Cancellalo prima di generarne uno nuovo.
+            </p>
+          </div>
+        )}
+        
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {/* Genera Calendario Corretto */}
+          <button
+            onClick={async () => {
+              if (calendarExists) {
+                alert('❌ Esiste già un calendario! Cancellalo prima di generarne uno nuovo.');
+                return;
+              }
+              
+              if (!confirmGenerateCalendar) {
+                setConfirmGenerateCalendar(true);
+                return;
+              }
+              
+              try {
+                const response = await fetch('/api/admin/generate-correct-calendar', { method: 'POST' });
+                const data = await response.json();
+                if (data.ok) {
+                  alert(`✅ Calendario corretto generato!\n\n${data.message}\n\nGiornata 1: ${data.day1Pairs} coppie\nGiornata 2: ${data.day2Pairs} coppie\n\nOra puoi visualizzare il calendario nella pagina LOG.`);
+                  setConfirmGenerateCalendar(false);
+                  checkCalendarExists();
+                } else {
+                  alert('❌ Errore: ' + (data.error || 'Errore sconosciuto'));
+                }
+              } catch (e) {
+                alert('❌ Errore: ' + e.message);
+              }
+            }}
+            className={`rounded-xl px-4 py-2 text-white ${
+              confirmGenerateCalendar 
+                ? "bg-orange-600 hover:bg-orange-700" 
+                : "bg-blue-600 hover:bg-blue-700"
+            }`}
+          >
+            {confirmGenerateCalendar ? "Conferma: Genera Calendario" : "Genera Calendario Corretto"}
+          </button>
+          
+          {/* Cancella Calendario */}
+          <button
+            onClick={async () => {
+              if (!confirmDeleteCalendar) {
+                setConfirmDeleteCalendar(true);
+                return;
+              }
+              
+              try {
+                const response = await fetch('/api/admin/delete-pair-calendar', { method: 'POST' });
+                const data = await response.json();
+                if (data.ok) {
+                  alert(`✅ Calendario cancellato!\n\n${data.message}`);
+                  setConfirmDeleteCalendar(false);
+                  checkCalendarExists();
+                } else {
+                  alert('❌ Errore: ' + (data.error || 'Errore sconosciuto'));
+                }
+              } catch (e) {
+                alert('❌ Errore: ' + e.message);
+              }
+            }}
+            className={`rounded-xl px-4 py-2 text-white ${
+              confirmDeleteCalendar 
+                ? "bg-red-700 hover:bg-red-800" 
+                : "bg-red-600 hover:bg-red-700"
+            }`}
+          >
+            {confirmDeleteCalendar ? "Conferma: Cancella Calendario" : "Cancella Calendario"}
+          </button>
+          
+          {/* Genera Round-Robin Corretto */}
+          <button
+            onClick={async () => {
+              if (calendarExists) {
+                alert('❌ Esiste già un calendario! Cancellalo prima di generarne uno nuovo.');
+                return;
+              }
+              
+              if (!confirmGenerateRoundRobin) {
+                setConfirmGenerateRoundRobin(true);
+                return;
+              }
+              
+              try {
+                const response = await fetch('/api/admin/generate-round-robin', { method: 'POST' });
+                const data = await response.json();
+                if (data.ok) {
+                  alert(`✅ Calendario Round-Robin generato!\n\n${data.message}\n\nGiornate: ${data.stats.totalDays}\nCoppie: ${data.stats.totalPairs}\nDuplicati: ${data.stats.duplicates}\nValido: ${data.stats.isValid ? 'SÌ' : 'NO'}`);
+                  setConfirmGenerateRoundRobin(false);
+                  checkCalendarExists();
+                } else {
+                  alert('❌ Errore: ' + (data.error || 'Errore sconosciuto'));
+                }
+              } catch (e) {
+                alert('❌ Errore: ' + e.message);
+              }
+            }}
+            className={`rounded-xl px-4 py-2 text-white ${
+              confirmGenerateRoundRobin 
+                ? "bg-orange-600 hover:bg-orange-700" 
+                : "bg-green-600 hover:bg-green-700"
+            }`}
+          >
+            {confirmGenerateRoundRobin ? "Conferma: Genera Round-Robin" : "Genera Round-Robin Corretto"}
+          </button>
+          
+          {/* Controlla Accoppiamenti */}
+          <button
+            onClick={async () => {
+              if (!confirmCheckPairings) {
+                setConfirmCheckPairings(true);
+                return;
+              }
+              
+              try {
+                const response = await fetch('/api/admin/check-pairings');
+                const data = await response.json();
+                if (data.ok) {
+                  alert(`📊 Analisi Accoppiamenti:\n\nGiornate: ${data.stats.totalDays}\nCoppie totali: ${data.stats.totalPairs}\nDuplicati: ${data.stats.duplicates}\n\n${data.duplicates.length > 0 ? '⚠️ Trovati duplicati!' : '✅ Nessun duplicato!'}`);
+                  setConfirmCheckPairings(false);
+                } else {
+                  alert('❌ Errore: ' + (data.error || 'Errore sconosciuto'));
+                }
+              } catch (e) {
+                alert('❌ Errore: ' + e.message);
+              }
+            }}
+            className={`rounded-xl px-4 py-2 text-white ${
+              confirmCheckPairings 
+                ? "bg-orange-600 hover:bg-orange-700" 
+                : "bg-yellow-600 hover:bg-yellow-700"
+            }`}
+          >
+            {confirmCheckPairings ? "Conferma: Controlla Accoppiamenti" : "Controlla Accoppiamenti"}
+          </button>
+          
+          {/* Visualizza Calendario */}
+          <button
+            onClick={() => {
+              if (!confirmViewCalendar) {
+                setConfirmViewCalendar(true);
+                return;
+              }
+              
+              window.open('/admin/log', '_blank');
+              setConfirmViewCalendar(false);
+            }}
+            className={`rounded-xl px-4 py-2 text-white ${
+              confirmViewCalendar 
+                ? "bg-orange-600 hover:bg-orange-700" 
+                : "bg-purple-600 hover:bg-purple-700"
+            }`}
+          >
+            {confirmViewCalendar ? "Conferma: Visualizza Calendario" : "Visualizza Calendario"}
+          </button>
+          
+          {/* Valida Calendario */}
+          <button
+            onClick={async () => {
+              if (!confirmValidateCalendar) {
+                setConfirmValidateCalendar(true);
+                return;
+              }
+              
+              try {
+                const response = await fetch('/api/admin/validate-pair-calendar');
+                const data = await response.json();
+                if (data.ok) {
+                  if (data.isValid) {
+                    alert(`✅ ${data.message}`);
+                  } else {
+                    alert(`❌ ${data.message}\n\nCoppie ripetute:\n${data.repeatedPairs.map(r => `Giornata ${r.day}: ${r.players}`).join('\n')}`);
+                  }
+                  setConfirmValidateCalendar(false);
+                } else {
+                  alert('❌ Errore: ' + (data.error || 'Errore sconosciuto'));
+                }
+              } catch (e) {
+                alert('❌ Errore: ' + e.message);
+              }
+            }}
+            className={`rounded-xl px-4 py-2 text-white ${
+              confirmValidateCalendar 
+                ? "bg-orange-600 hover:bg-orange-700" 
+                : "bg-orange-600 hover:bg-orange-700"
+            }`}
+          >
+            {confirmValidateCalendar ? "Conferma: Valida Calendario" : "Valida Calendario"}
+          </button>
+        </div>
+        
+        {/* Messaggi di conferma */}
+        {confirmGenerateCalendar && (
+          <div className="text-orange-700 text-sm">⚠️ Clicca di nuovo per confermare la generazione del calendario</div>
+        )}
+        {confirmDeleteCalendar && (
+          <div className="text-red-700 text-sm">⚠️ Clicca di nuovo per confermare la cancellazione del calendario</div>
+        )}
+        {confirmGenerateRoundRobin && (
+          <div className="text-orange-700 text-sm">⚠️ Clicca di nuovo per confermare la generazione Round-Robin</div>
+        )}
+        {confirmCheckPairings && (
+          <div className="text-orange-700 text-sm">⚠️ Clicca di nuovo per confermare il controllo accoppiamenti</div>
+        )}
+        {confirmViewCalendar && (
+          <div className="text-orange-700 text-sm">⚠️ Clicca di nuovo per confermare l'apertura del calendario</div>
+        )}
+        {confirmValidateCalendar && (
+          <div className="text-orange-700 text-sm">⚠️ Clicca di nuovo per confermare la validazione del calendario</div>
+        )}
+      </section>
     </main>
   );
 }
