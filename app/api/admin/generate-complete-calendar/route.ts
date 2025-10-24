@@ -186,7 +186,7 @@ function generateCompleteCalendar(players: any[], existingPairings: any[], usedP
 }
 
 function generateDayPairsFromAvailable(allPossiblePairs: any[][], usedPairs: Set<string>, day: number) {
-  const pairs = [];
+  const pairs: any[] = [];
   const usedPlayers = new Set<string>();
   
   // Trova 4 partite (8 coppie) non usate per questa giornata
