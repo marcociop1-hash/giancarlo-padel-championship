@@ -689,7 +689,7 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
   
   const totalMatchesPlayed = completedMatches.length;
   const currentDayIndex = Math.floor(totalMatchesPlayed / 4);
-  const nextMatchday = Math.floor(totalMatches / 4) + 1;
+  // nextMatchday è già definito sopra (riga 549)
   
   console.log(`🎯 ALGORITMO CON CALENDARIO PREDEFINITO: Giornata ${nextMatchday} (${totalMatchesPlayed} partite giocate)`);
   
