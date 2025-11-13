@@ -1,16 +1,9 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, useCallback, memo } from "react";
-import { db, auth } from "../lib/firebase";
+import { auth } from "../lib/firebase";
 import { isUserAdmin } from "../lib/admin";
-import {
-  collection,
-  getDocs,
-  serverTimestamp,
-  getDoc,
-  query,
-  where,
-} from "firebase/firestore";
+import { serverTimestamp } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import TournamentBracket from "./TournamentBracket";
 import SupercoppaWinnerBanner from "./SupercoppaWinnerBanner";
