@@ -19,17 +19,19 @@ export default function StandingsView() {
   const load = useMemo(() => async () => {
     setState({ status: 'loading' });
     try {
-      // Players
-      const playersSnap = await getDocs(collection(db, 'players'));
-      const players: PlayerDoc[] = playersSnap.docs.map(d => ({
-        id: d.id,
-        name: (d.data() as any).name ?? 'Senza nome',
+      // Players - via API
+      const playersResponse = await fetch('/api/players');
+      const playersData = await playersResponse.json();
+      const players: PlayerDoc[] = (playersData.players || []).map((p: any) => ({
+        id: p.id,
+        name: p.name ?? 'Senza nome',
       }));
       const validIds = new Set(players.map(p => p.id));
 
-      // Matches
-      const matchesSnap = await getDocs(collection(db, 'matches'));
-      const raw: any[] = matchesSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+      // Matches - via API
+      const matchesResponse = await fetch('/api/matches');
+      const matchesData = await matchesResponse.json();
+      const raw: any[] = matchesData.matches || [];
 
       const matches: MatchDoc[] = raw.map((m: any) => {
         const teamAIds = (Array.isArray(m.teamA) ? m.teamA : [])

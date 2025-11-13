@@ -39,25 +39,31 @@ export default function SupercoppaPage() {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [bannerClosed, setBannerClosed] = useState(false);
 
-  // Carica le partite della supercoppa
+  // Carica le partite della supercoppa - via API
   useEffect(() => {
     const loadMatches = async () => {
       try {
         setLoading(true);
-        const q = query(
-          collection(db, "matches"),
-          where("phase", "==", "supercoppa"),
-          orderBy("round", "asc"),
-          orderBy("matchNumber", "asc")
-        );
+        const response = await fetch('/api/matches');
         
-        const snapshot = await getDocs(q);
-        const matchesData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Match[];
-        
-        setMatches(matchesData);
+        if (response.ok) {
+          const data = await response.json();
+          // Filtra e ordina lato client
+          const allMatches = (data.matches || []) as Match[];
+          const supercoppaMatches = allMatches
+            .filter(m => m.phase === "supercoppa")
+            .sort((a, b) => {
+              // Ordina per round e poi per matchNumber
+              if (a.round !== b.round) {
+                return (a.round || 0) - (b.round || 0);
+              }
+              return (a.matchNumber || 0) - (b.matchNumber || 0);
+            });
+          
+          setMatches(supercoppaMatches);
+        } else {
+          throw new Error("Errore nel caricamento delle partite");
+        }
       } catch (err: any) {
         setError(err.message || "Errore nel caricamento delle partite");
       } finally {
