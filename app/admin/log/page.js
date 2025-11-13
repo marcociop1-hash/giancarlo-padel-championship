@@ -109,6 +109,7 @@ export default function LogPage() {
   const [standings, setStandings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [pairCalendar, setPairCalendar] = useState(null);
   
   // Stato per il modal di modifica partita
   const [editingMatch, setEditingMatch] = useState(null);
@@ -178,6 +179,35 @@ export default function LogPage() {
       }
     } catch (e) {
       console.error("❌ Errore caricamento classifica:", e);
+    }
+  }, []);
+
+  const fetchPairCalendar = useCallback(async () => {
+    try {
+      console.log('🔄 Caricando calendario coppie...');
+      const response = await fetch('/api/admin/get-pair-calendar');
+      console.log('📡 Response status:', response.status);
+      const data = await response.json();
+      console.log('📥 Risposta API:', data);
+      
+      if (response.ok) {
+        if (data.ok && data.calendar && Array.isArray(data.calendar) && data.calendar.length > 0) {
+          console.log('✅ Calendario caricato:', data.calendar.length, 'giornate');
+          setPairCalendar(data.calendar);
+        } else {
+          console.log('⚠️ Calendario non disponibile:', {
+            ok: data.ok,
+            hasCalendar: !!data.calendar,
+            isArray: Array.isArray(data.calendar),
+            length: data.calendar?.length,
+            message: data.message
+          });
+        }
+      } else {
+        console.error('❌ Errore response:', response.status, data);
+      }
+    } catch (e) {
+      console.error('❌ Errore fetch calendario:', e);
     }
   }, []);
 
@@ -313,11 +343,11 @@ export default function LogPage() {
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await Promise.all([fetchMatches(), fetchPlayers(), fetchStandings()]);
+      await Promise.all([fetchMatches(), fetchPlayers(), fetchStandings(), fetchPairCalendar()]);
       setLoading(false);
     };
     loadData();
-  }, [fetchMatches, fetchPlayers, fetchStandings]);
+  }, [fetchMatches, fetchPlayers, fetchStandings, fetchPairCalendar]);
 
   // Raggruppa le partite per giornata (campionato) o round (supercoppa)
   const matchesByMatchday = useMemo(() => {
@@ -576,6 +606,47 @@ export default function LogPage() {
           <div className="text-sm text-gray-600">Accoppiamenti Ripetuti</div>
         </div>
       </div>
+
+      {/* Calendario Coppie Predefinite */}
+      {pairCalendar && pairCalendar.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border p-4">
+          <h2 className="text-lg font-semibold text-emerald-800 mb-3">📅 Calendario Coppie Predefinite (15 Giornate)</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Le coppie sono predefinite per ogni giornata. Gli incontri (avversari) vengono generati dinamicamente dall'algoritmo di accoppiamento.
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            {pairCalendar.map((day, index) => (
+              <div key={index} className="border rounded-lg p-3 bg-gray-50 hover:bg-gray-100 transition-colors">
+                <h3 className="font-semibold text-gray-800 mb-2 text-sm border-b pb-1">
+                  Giornata {day.day || index + 1}
+                </h3>
+                <div className="space-y-1.5">
+                  {day.pairs && day.pairs.length > 0 ? (
+                    day.pairs.map((pair, pairIndex) => {
+                      let playerNames = [];
+                      if (Array.isArray(pair.teamA)) {
+                        playerNames = pair.teamA.map(p => p.name || p.Nome || p.id || '??');
+                      } else if (pair.teamA) {
+                        playerNames = [pair.teamA];
+                      }
+
+                      return (
+                        <div key={pairIndex} className="text-xs py-1 px-2 bg-blue-50 rounded border border-blue-200">
+                          <div className="font-medium text-blue-700">
+                            {playerNames.length > 0 ? playerNames.join(' + ') : 'Coppia ' + (pairIndex + 1)}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-xs text-gray-500 italic">Nessuna coppia definita</div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Elenco giornate e match */}
