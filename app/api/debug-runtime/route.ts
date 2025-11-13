@@ -50,7 +50,7 @@ export async function GET() {
     };
 
     // Test connessione Firebase (solo se le variabili esistono)
-    let firebaseTest = null;
+    let firebaseTest: any = null;
     try {
       if (process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
         firebaseTest = {
