@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState, useMemo, memo } from "react";
-import { db } from "../../lib/firebase";
-import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
 import { formatDate, formatTime } from "../../lib/utils";
 import TournamentBracket from "../../components/TournamentBracket";
 import SupercoppaWinnerBanner from "../../components/SupercoppaWinnerBanner";

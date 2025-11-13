@@ -1,8 +1,6 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { db } from '../../lib/firebase';
-import { collection, getDocs } from 'firebase/firestore';
 import { computeStandings, PlayerDoc, MatchDoc, StandingsResult } from '../lib/standings';
 
 type LoadState =
