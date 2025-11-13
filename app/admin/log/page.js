@@ -131,12 +131,34 @@ export default function LogPage() {
   const fetchMatches = useCallback(async () => {
     try {
       console.log('[LOG] 🔄 Inizio caricamento partite...');
+      console.log('[LOG] 🔍 Firebase db instance:', db ? 'OK' : 'NULL');
+      console.log('[LOG] 🔍 Firebase app:', db?.app ? 'OK' : 'NULL');
+      
       const startTime = Date.now();
-      const matchesSnap = await getDocs(
-        query(collection(db, "matches"), orderBy("createdAt", "desc"))
-      );
+      
+      // Prova prima senza orderBy per vedere se il problema è l'indice
+      console.log('[LOG] 🔍 Tentativo query matches senza orderBy...');
+      let matchesSnap;
+      try {
+        matchesSnap = await getDocs(collection(db, "matches"));
+        console.log('[LOG] ✅ Query matches senza orderBy completata');
+      } catch (orderByError) {
+        console.error('[LOG] ❌ Errore query senza orderBy:', orderByError);
+        console.log('[LOG] 🔍 Tentativo query matches con orderBy...');
+        matchesSnap = await getDocs(
+          query(collection(db, "matches"), orderBy("createdAt", "desc"))
+        );
+      }
+      
       const duration = Date.now() - startTime;
-      const matchesData = matchesSnap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
+      console.log(`[LOG] 📊 Query completata in ${duration}ms, docs: ${matchesSnap.docs.length}`);
+      
+      const matchesData = matchesSnap.docs.map((d) => {
+        const data = d.data();
+        console.log('[LOG] 📄 Match doc:', { id: d.id, hasData: !!data, status: data?.status });
+        return { id: d.id, ...(data || {}) };
+      });
+      
       console.log(`[LOG] ✅ Partite caricate: ${matchesData.length} in ${duration}ms`);
       setMatches(matchesData);
     } catch (e) {
@@ -144,8 +166,24 @@ export default function LogPage() {
       console.error("[LOG] ❌ Dettagli errore:", {
         message: e.message,
         code: e.code,
-        stack: e.stack
+        stack: e.stack,
+        name: e.name
       });
+      
+      // Se è un errore di indice, prova senza orderBy
+      if (e.code === 'failed-precondition' || e.message?.includes('index')) {
+        console.log('[LOG] 🔄 Tentativo senza orderBy a causa di errore indice...');
+        try {
+          const matchesSnap = await getDocs(collection(db, "matches"));
+          const matchesData = matchesSnap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
+          console.log(`[LOG] ✅ Partite caricate (senza orderBy): ${matchesData.length}`);
+          setMatches(matchesData);
+          return;
+        } catch (e2) {
+          console.error("[LOG] ❌ Errore anche senza orderBy:", e2);
+        }
+      }
+      
       setError("Errore nel caricamento delle partite");
     }
   }, []);
@@ -153,10 +191,21 @@ export default function LogPage() {
   const fetchPlayers = useCallback(async () => {
     try {
       console.log('[LOG] 🔄 Inizio caricamento giocatori...');
+      console.log('[LOG] 🔍 Firebase db instance:', db ? 'OK' : 'NULL');
+      
       const startTime = Date.now();
+      console.log('[LOG] 🔍 Esecuzione query players...');
       const playersSnap = await getDocs(collection(db, "players"));
       const duration = Date.now() - startTime;
-      const playersData = playersSnap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
+      
+      console.log(`[LOG] 📊 Query completata in ${duration}ms, docs: ${playersSnap.docs.length}`);
+      
+      const playersData = playersSnap.docs.map((d) => {
+        const data = d.data();
+        console.log('[LOG] 📄 Player doc:', { id: d.id, name: data?.name || data?.Nome || 'N/A', hasData: !!data });
+        return { id: d.id, ...(data || {}) };
+      });
+      
       console.log(`[LOG] ✅ Giocatori caricati: ${playersData.length} in ${duration}ms`);
       setPlayers(playersData);
     } catch (e) {
@@ -164,7 +213,8 @@ export default function LogPage() {
       console.error("[LOG] ❌ Dettagli errore:", {
         message: e.message,
         code: e.code,
-        stack: e.stack
+        stack: e.stack,
+        name: e.name
       });
       setError("Errore nel caricamento dei giocatori");
     }
