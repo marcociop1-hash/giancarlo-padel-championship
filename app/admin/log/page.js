@@ -130,22 +130,42 @@ export default function LogPage() {
 
   const fetchMatches = useCallback(async () => {
     try {
+      console.log('[LOG] 🔄 Inizio caricamento partite...');
+      const startTime = Date.now();
       const matchesSnap = await getDocs(
         query(collection(db, "matches"), orderBy("createdAt", "desc"))
       );
-      setMatches(matchesSnap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) })));
+      const duration = Date.now() - startTime;
+      const matchesData = matchesSnap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
+      console.log(`[LOG] ✅ Partite caricate: ${matchesData.length} in ${duration}ms`);
+      setMatches(matchesData);
     } catch (e) {
-      console.error("Errore caricamento partite:", e);
+      console.error("[LOG] ❌ Errore caricamento partite:", e);
+      console.error("[LOG] ❌ Dettagli errore:", {
+        message: e.message,
+        code: e.code,
+        stack: e.stack
+      });
       setError("Errore nel caricamento delle partite");
     }
   }, []);
 
   const fetchPlayers = useCallback(async () => {
     try {
+      console.log('[LOG] 🔄 Inizio caricamento giocatori...');
+      const startTime = Date.now();
       const playersSnap = await getDocs(collection(db, "players"));
-      setPlayers(playersSnap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) })));
+      const duration = Date.now() - startTime;
+      const playersData = playersSnap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
+      console.log(`[LOG] ✅ Giocatori caricati: ${playersData.length} in ${duration}ms`);
+      setPlayers(playersData);
     } catch (e) {
-      console.error("Errore caricamento giocatori:", e);
+      console.error("[LOG] ❌ Errore caricamento giocatori:", e);
+      console.error("[LOG] ❌ Dettagli errore:", {
+        message: e.message,
+        code: e.code,
+        stack: e.stack
+      });
       setError("Errore nel caricamento dei giocatori");
     }
   }, []);
@@ -393,6 +413,8 @@ export default function LogPage() {
       result[key] = grouped[key];
     });
     
+    const resultKeys = Object.keys(result);
+    console.log(`[LOG] ✅ matchesByMatchday calcolato: ${resultKeys.length} giornate/round`);
     return result;
   }, [matches]);
 
