@@ -45,7 +45,7 @@ export async function POST(req: Request) {
     const matchesToDelete = matchesSnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
-    }));
+    })) as any[];
     
     console.log(`[API] 📊 Trovate ${matchesToDelete.length} partite da cancellare`);
     
