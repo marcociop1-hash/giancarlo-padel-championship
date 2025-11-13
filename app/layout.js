@@ -51,6 +51,9 @@ const RootLayout = memo(({ children }) => {
 
   return (
     <html lang="it">
+      <head>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎾</text></svg>" />
+      </head>
       <body>
         {/* SFONDO GRADIENTE "STYLE PRECEDENTE" */}
         <div className="min-h-dvh bg-padel-gradient flex flex-col">
