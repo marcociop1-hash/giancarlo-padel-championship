@@ -172,62 +172,59 @@ export default function LogPage() {
 
   const fetchStandings = useCallback(async () => {
     try {
-      console.log('🔄 Caricando classifica per log page...');
-      // Forza sempre il refresh per evitare cache stale
-      const response = await fetch('/api/classifica?refresh=true');
+      console.log('[LOG] 🔄 Inizio caricamento classifica...');
+      const startTime = Date.now();
+      // Usa cache se disponibile per performance migliori
+      const response = await fetch('/api/classifica');
+      const duration = Date.now() - startTime;
+      console.log(`[LOG] 📡 Response classifica: ${response.status} ${response.statusText} (${duration}ms)`);
+      
       if (response.ok) {
         const data = await response.json();
-        console.log('📊 Classifica caricata:', data);
-        console.log('📈 Numero giocatori:', data.rows?.length || 0);
-        console.log('🔄 Cache status:', data.cached ? 'CACHED' : 'FRESH');
-        
-        if (data.rows && data.rows.length > 0) {
-          console.log('🎯 Primi 3 giocatori:', data.rows.slice(0, 3));
-          // Controlla se ci sono giocatori con punteggi > 0
-          const playersWithPoints = data.rows.filter(p => p.points > 0);
-          if (playersWithPoints.length > 0) {
-            console.log('⚠️ ATTENZIONE: Giocatori con punteggi > 0:', playersWithPoints);
-            console.log('🎯 Esempi:', playersWithPoints.slice(0, 3));
-          } else {
-            console.log('✅ Tutti i giocatori hanno 0 punti');
-          }
-        }
-        
+        console.log(`[LOG] ✅ Classifica caricata: ${data.rows?.length || 0} giocatori`);
         setStandings(data.rows || []);
       } else {
-        console.error('❌ Errore response classifica:', response.status);
+        const errorText = await response.text();
+        console.error('[LOG] ❌ Errore response classifica:', response.status, errorText);
       }
     } catch (e) {
-      console.error("❌ Errore caricamento classifica:", e);
+      console.error("[LOG] ❌ Errore caricamento classifica:", e);
+      console.error("[LOG] ❌ Dettagli errore:", {
+        message: e.message,
+        stack: e.stack
+      });
     }
   }, []);
 
   const fetchPairCalendar = useCallback(async () => {
     try {
-      console.log('🔄 Caricando calendario coppie...');
+      console.log('[LOG] 🔄 Inizio caricamento calendario coppie...');
+      const startTime = Date.now();
       const response = await fetch('/api/admin/get-pair-calendar');
-      console.log('📡 Response status:', response.status);
-      const data = await response.json();
-      console.log('📥 Risposta API:', data);
+      const duration = Date.now() - startTime;
+      console.log(`[LOG] 📡 Response calendario: ${response.status} ${response.statusText} (${duration}ms)`);
       
-      if (response.ok) {
-        if (data.ok && data.calendar && Array.isArray(data.calendar) && data.calendar.length > 0) {
-          console.log('✅ Calendario caricato:', data.calendar.length, 'giornate');
-          setPairCalendar(data.calendar);
-        } else {
-          console.log('⚠️ Calendario non disponibile:', {
-            ok: data.ok,
-            hasCalendar: !!data.calendar,
-            isArray: Array.isArray(data.calendar),
-            length: data.calendar?.length,
-            message: data.message
-          });
-        }
+      const data = await response.json();
+      console.log('[LOG] 📥 Dati calendario ricevuti:', {
+        ok: data.ok,
+        hasCalendar: !!data.calendar,
+        isArray: Array.isArray(data.calendar),
+        length: data.calendar?.length,
+        message: data.message
+      });
+      
+      if (response.ok && data.ok && data.calendar && Array.isArray(data.calendar) && data.calendar.length > 0) {
+        console.log(`[LOG] ✅ Calendario caricato: ${data.calendar.length} giornate`);
+        setPairCalendar(data.calendar);
       } else {
-        console.error('❌ Errore response:', response.status, data);
+        console.warn('[LOG] ⚠️ Calendario non disponibile o vuoto');
       }
     } catch (e) {
-      console.error('❌ Errore fetch calendario:', e);
+      console.error('[LOG] ❌ Errore fetch calendario:', e);
+      console.error("[LOG] ❌ Dettagli errore:", {
+        message: e.message,
+        stack: e.stack
+      });
     }
   }, []);
 
@@ -361,13 +358,58 @@ export default function LogPage() {
   }, [editingMatch, editForm, closeEditModal, fetchMatches]);
 
   useEffect(() => {
+    let mounted = true;
+    let cancelled = false;
+    
     const loadData = async () => {
+      if (cancelled || !mounted) return;
+      
+      console.log('[LOG] 🚀 Inizio caricamento dati pagina log...');
+      const totalStartTime = Date.now();
       setLoading(true);
-      await Promise.all([fetchMatches(), fetchPlayers(), fetchStandings(), fetchPairCalendar()]);
-      setLoading(false);
+      
+      try {
+        // Carica prima i dati essenziali (partite, giocatori, classifica)
+        console.log('[LOG] 📦 Caricamento dati essenziali in parallelo...');
+        const essentialStartTime = Date.now();
+        await Promise.all([fetchMatches(), fetchPlayers(), fetchStandings()]);
+        const essentialDuration = Date.now() - essentialStartTime;
+        console.log(`[LOG] ✅ Dati essenziali caricati in ${essentialDuration}ms`);
+        
+        // Carica il calendario in background (non blocca il rendering)
+        if (mounted && !cancelled) {
+          console.log('[LOG] 📅 Caricamento calendario in background...');
+          fetchPairCalendar().catch(err => {
+            if (mounted && !cancelled) {
+              console.error('[LOG] ❌ Errore caricamento calendario:', err);
+            }
+          });
+        }
+      } catch (error) {
+        if (mounted && !cancelled) {
+          console.error('[LOG] ❌ Errore caricamento dati:', error);
+          console.error("[LOG] ❌ Dettagli errore:", {
+            message: error.message,
+            stack: error.stack
+          });
+        }
+      } finally {
+        if (mounted && !cancelled) {
+          const totalDuration = Date.now() - totalStartTime;
+          console.log(`[LOG] ✅ Caricamento completato in ${totalDuration}ms`);
+          setLoading(false);
+        }
+      }
     };
+    
     loadData();
-  }, [fetchMatches, fetchPlayers, fetchStandings, fetchPairCalendar]);
+    
+    return () => { 
+      console.log('[LOG] 🧹 Cleanup useEffect');
+      cancelled = true;
+      mounted = false; 
+    };
+  }, []); // Esegui solo una volta al mount
 
   // Raggruppa le partite per giornata (campionato) o round (supercoppa)
   const matchesByMatchday = useMemo(() => {
@@ -420,6 +462,7 @@ export default function LogPage() {
 
   // Crea un log degli accoppiamenti per giocatore
   const playerPairings = useMemo(() => {
+    console.log('[LOG] 🔄 Calcolo playerPairings...');
     const pairings = {};
     
     // Inizializza tutti i giocatori
@@ -491,8 +534,10 @@ export default function LogPage() {
       player.pairings.sort((a, b) => a.matchday - b.matchday);
     });
     
+    const playersWithPairings = Object.keys(pairings).filter(k => pairings[k].pairings.length > 0).length;
+    console.log(`[LOG] ✅ playerPairings calcolato: ${playersWithPairings} giocatori con accoppiamenti`);
     return pairings;
-  }, [matchesByMatchday, players]);
+  }, [matchesByMatchday, players, standings]);
 
   // Analizza accoppiamenti ripetuti (stesso partner più volte)
   const repeatedPairings = useMemo(() => {
@@ -557,6 +602,7 @@ export default function LogPage() {
   }, [matches, matchesByMatchday, players, playerPairings, repeatedPairings]);
 
   if (loading) {
+    console.log('[LOG] ⏳ Rendering stato loading...');
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 flex items-center justify-center">
         <div className="text-center">
@@ -566,6 +612,15 @@ export default function LogPage() {
       </div>
     );
   }
+  
+  console.log('[LOG] 🎨 Rendering pagina log con:', {
+    matches: matches.length,
+    players: players.length,
+    standings: standings.length,
+    pairCalendar: pairCalendar?.length || 0,
+    matchesByMatchdayKeys: Object.keys(matchesByMatchday).length,
+    playerPairingsKeys: Object.keys(playerPairings).length
+  });
 
   if (error) {
     return (
