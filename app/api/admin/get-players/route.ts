@@ -30,11 +30,7 @@ export async function GET() {
     const playersSnap = await db.collection("players").get();
     const players = playersSnap.docs.map(doc => ({
       id: doc.id,
-      username: doc.data().username || "N/A",
-      email: doc.data().email || "N/A",
-      name: doc.data().name || doc.data().displayName || "N/A",
-      points: doc.data().points || 0,
-      createdAt: doc.data().createdAt || "N/A"
+      ...doc.data() // Restituisce tutti i campi del documento
     }));
     
     console.log(`✅ Trovati ${players.length} giocatori`);
