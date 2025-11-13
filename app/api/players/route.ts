@@ -1,0 +1,45 @@
+import { NextResponse } from "next/server";
+import { getApps, initializeApp, cert } from "firebase-admin/app";
+import { getFirestore } from "firebase-admin/firestore";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
+function adminDb() {
+  if (!getApps().length) {
+    const projectId = process.env.FIREBASE_PROJECT_ID!;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL!;
+    const privateKey = process.env.FIREBASE_PRIVATE_KEY!.replace(/\\n/g, '\n');
+    initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
+  }
+  return getFirestore();
+}
+
+export async function GET() {
+  try {
+    const db = adminDb();
+    
+    console.log('[API] 📋 Caricamento lista giocatori (pubblico)...');
+    
+    const playersSnap = await db.collection("players").get();
+    const players = playersSnap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data() // Restituisce tutti i campi del documento
+    }));
+    
+    console.log(`[API] ✅ Trovati ${players.length} giocatori`);
+    
+    return NextResponse.json({
+      success: true,
+      players,
+      count: players.length
+    });
+    
+  } catch (error: any) {
+    console.error("[API] ❌ ERRORE /api/players:", error);
+    return NextResponse.json({ 
+      error: error.message || "Errore interno del server durante il caricamento dei giocatori" 
+    }, { status: 500 });
+  }
+}
+

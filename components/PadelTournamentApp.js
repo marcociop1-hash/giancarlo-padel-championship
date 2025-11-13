@@ -144,22 +144,33 @@ export default function PadelTournamentApp() {
     return () => unsub();
   }, []);
 
-  // dati - ottimizzato con useCallback e gestione errori migliorata
+  // dati - ottimizzato con API server-side invece di query client-side
   useEffect(() => {
     let mounted = true;
     let abortController = new AbortController();
 
     const loadData = async () => {
       try {
-        const [pSnap, mSnap] = await Promise.all([
-          getDocs(collection(db, "players")),
-          getDocs(collection(db, "matches")),
+        const [playersResponse, matchesResponse] = await Promise.all([
+          fetch('/api/players'),
+          fetch('/api/matches'),
         ]);
         
         if (!mounted || abortController.signal.aborted) return;
         
-        setPlayers(pSnap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) })));
-        setMatches(mSnap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) })));
+        if (playersResponse.ok) {
+          const playersData = await playersResponse.json();
+          setPlayers(playersData.players || []);
+        } else {
+          throw new Error('Errore caricamento giocatori');
+        }
+        
+        if (matchesResponse.ok) {
+          const matchesData = await matchesResponse.json();
+          setMatches(matchesData.matches || []);
+        } else {
+          throw new Error('Errore caricamento partite');
+        }
       } catch (e) {
         if (mounted && !abortController.signal.aborted) {
           console.error(e);
@@ -180,25 +191,30 @@ export default function PadelTournamentApp() {
     };
   }, []);
 
-  // Carica partite Supercoppa - ottimizzato
+  // Carica partite Supercoppa - ottimizzato con API server-side
   useEffect(() => {
     let mounted = true;
     let abortController = new AbortController();
 
     const loadSupercoppaMatches = async () => {
       try {
-        // Carica tutte le partite e filtra lato client per evitare problemi di indici
-        const snap = await getDocs(collection(db, "matches"));
+        // Carica tutte le partite via API e filtra lato client
+        const response = await fetch('/api/matches');
         
         if (!mounted || abortController.signal.aborted) return;
         
-        const allMatches = snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
-        const supercoppaData = allMatches.filter(m => m.phase === "supercoppa");
-        setSupercoppaMatches(supercoppaData);
-        
-        // Carica anche le partite da recuperare
-        const recoveryData = allMatches.filter(m => m.status === "da recuperare");
-        setRecoveryMatches(recoveryData);
+        if (response.ok) {
+          const data = await response.json();
+          const allMatches = data.matches || [];
+          
+          // Filtra partite Supercoppa
+          const supercoppaData = allMatches.filter(m => m.phase === "supercoppa");
+          setSupercoppaMatches(supercoppaData);
+          
+          // Carica anche le partite da recuperare
+          const recoveryData = allMatches.filter(m => m.status === "da recuperare");
+          setRecoveryMatches(recoveryData);
+        }
       } catch (e) {
         if (mounted && !abortController.signal.aborted) {
           console.error("Errore caricamento partite Supercoppa:", e);
@@ -214,15 +230,18 @@ export default function PadelTournamentApp() {
     };
   }, []);
 
-  // fase - ottimizzato
+  // fase - ottimizzato con API server-side
   useEffect(() => {
     let mounted = true;
     
     const loadPhase = async () => {
       try {
-        const cfg = await getDoc(doc(db, "config", "tournament"));
-        if (mounted) {
-          setPhase((cfg.data()?.phase) || "campionato");
+        const response = await fetch('/api/config/tournament');
+        if (mounted && response.ok) {
+          const data = await response.json();
+          setPhase(data.phase || "campionato");
+        } else if (mounted) {
+          setPhase("campionato");
         }
       } catch {
         if (mounted) {
