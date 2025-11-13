@@ -1,15 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useMemo } from "react";
-// FIX: Forza rebuild per correggere errore standingA
-import { db, auth } from "../../../lib/firebase";
-import {
-  collection,
-  getDocs,
-  query,
-  orderBy,
-  where,
-} from "firebase/firestore";
+// Usiamo API server-side invece di query client-side Firestore per evitare problemi di permessi
 
 /* ============ Helpers squadra (label) ============ */
 function normalizeTeam(team) {
