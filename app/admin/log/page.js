@@ -729,6 +729,14 @@ export default function LogPage() {
         {/* Elenco giornate e match */}
         <div className="space-y-4">
           <h2 className="text-xl font-semibold text-emerald-800">📅 Giornate e Partite</h2>
+          {(() => {
+            const entries = Object.entries(matchesByMatchday);
+            console.log('[LOG] 🎨 Rendering sezione "Giornate e Partite":', {
+              entriesCount: entries.length,
+              entries: entries.map(([k, v]) => ({ key: k, matches: v.length }))
+            });
+            return null;
+          })()}
           
           {Object.entries(matchesByMatchday).map(([matchday, matchList]) => (
             <div key={matchday} className="bg-white rounded-lg shadow-sm border overflow-hidden">
@@ -836,6 +844,14 @@ export default function LogPage() {
         {/* Accoppiamenti per giocatore */}
         <div className="space-y-4">
           <h2 className="text-xl font-semibold text-emerald-800">👥 Accoppiamenti per Giocatore</h2>
+          {(() => {
+            const entries = Object.entries(playerPairings).filter(([_, player]) => player.pairings.length > 0);
+            console.log('[LOG] 🎨 Rendering sezione "Accoppiamenti per Giocatore":', {
+              playersWithPairings: entries.length,
+              totalPlayers: Object.keys(playerPairings).length
+            });
+            return null;
+          })()}
           
           {Object.entries(playerPairings)
             .filter(([_, player]) => player.pairings.length > 0)
