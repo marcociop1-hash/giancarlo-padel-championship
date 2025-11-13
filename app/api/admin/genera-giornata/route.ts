@@ -684,32 +684,169 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
     });
   }
 
-  // NUOVO ALGORITMO IN 4 FASI: Calendario perfetto + Ottimizzazione avversari
+  // NUOVO ALGORITMO: Usa coppie predefinite dal calendario + Ottimizzazione avversari
   let intelligentMatches: MatchCandidate[] = [];
   
   const totalMatchesPlayed = completedMatches.length;
   const currentDayIndex = Math.floor(totalMatchesPlayed / 4);
+  const nextMatchday = Math.floor(totalMatches / 4) + 1;
   
-  console.log(`🎯 ALGORITMO 4 FASI: Giornata ${currentDayIndex + 1} (${totalMatchesPlayed} partite giocate)`);
+  console.log(`🎯 ALGORITMO CON CALENDARIO PREDEFINITO: Giornata ${nextMatchday} (${totalMatchesPlayed} partite giocate)`);
   
-  // FASE 1: Genera calendario perfetto delle coppie (solo per le prime volte)
-  if (totalMatchesPlayed < 60) { // Prime 15 giornate
-    console.log("🎯 FASE 1: Generando calendario perfetto delle coppie");
-    const perfectCalendar = generatePerfectPairingCalendar(playersWithCurrentPoints);
+  // FASE 1: Leggi le coppie predefinite dal calendario per questa giornata
+  try {
+    const calendarDoc = await db.collection('pair_calendar').doc('calendar').get();
     
-    if (perfectCalendar.length > currentDayIndex) {
-      const dayMatches = perfectCalendar[currentDayIndex];
-      console.log(`✅ FASE 1 completata: ${dayMatches.length} partite con coppie perfette`);
+    if (calendarDoc.exists) {
+      const calendarData = calendarDoc.data();
+      const calendar = calendarData?.calendar || [];
       
-      // FASE 2-4: Ottimizza avversari per punteggi, game e varietà
-      intelligentMatches = optimizeOpponents(dayMatches, playerScores, playerGames, opponentPairs);
-      console.log(`✅ FASE 2-4 completata: ${intelligentMatches.length} partite ottimizzate`);
+      // Trova la giornata corrispondente (l'indice è 0-based, il matchday è 1-based)
+      const dayIndex = nextMatchday - 1;
+      
+      if (calendar.length > dayIndex && calendar[dayIndex]) {
+        const dayData = calendar[dayIndex];
+        const predefinedPairs = dayData.pairs || [];
+        
+        console.log(`📅 Calendario trovato: Giornata ${nextMatchday}, ${predefinedPairs.length} coppie predefinite`);
+        
+        if (predefinedPairs.length >= 4) {
+          // Converti le coppie predefinite in formato LightPlayer
+          const pairsAsLightPlayers: LightPlayer[][] = [];
+          
+          for (const pair of predefinedPairs) {
+            // La struttura è: { teamA: [{ id: "...", name: "..." }, { id: "...", name: "..." }] }
+            const teamA = pair.teamA || [];
+            
+            // Converti gli oggetti giocatore in LightPlayer con punteggi aggiornati
+            const convertedPair: LightPlayer[] = [];
+            for (const playerObj of teamA) {
+              if (playerObj && playerObj.id) {
+                // Trova il giocatore con punteggi aggiornati
+                const foundPlayer = playersWithCurrentPoints.find(p => p.id === playerObj.id);
+                if (foundPlayer) {
+                  convertedPair.push(foundPlayer);
+                } else {
+                  // Se non trovato, usa i dati base
+                  convertedPair.push(toLight(playerObj));
+                }
+              } else if (typeof playerObj === 'string') {
+                // Fallback: se è una stringa (nome), cerca per nome
+                const foundPlayer = playersWithCurrentPoints.find(p => {
+                  const pName = (p.name || '').toLowerCase();
+                  const searchName = playerObj.toLowerCase();
+                  return pName === searchName || 
+                         pName.includes(searchName) || 
+                         searchName.includes(pName);
+                });
+                
+                if (foundPlayer) {
+                  convertedPair.push(foundPlayer);
+                } else {
+                  console.warn(`⚠️ Giocatore non trovato: ${playerObj}`);
+                }
+              } else {
+                convertedPair.push(toLight(playerObj));
+              }
+            }
+            
+            if (convertedPair.length === 2) {
+              pairsAsLightPlayers.push(convertedPair);
+              console.log(`   ✅ Coppia: ${convertedPair[0].name} + ${convertedPair[1].name}`);
+            } else {
+              console.warn(`⚠️ Coppia non valida: ${convertedPair.length} giocatori invece di 2`);
+            }
+          }
+          
+          if (pairsAsLightPlayers.length >= 4) {
+            console.log(`✅ ${pairsAsLightPlayers.length} coppie convertite correttamente`);
+            
+            // Crea partite candidate dalle coppie (ogni coppia diventa teamA, serve teamB)
+            const dayMatches: { teamA: LightPlayer[], teamB: LightPlayer[] }[] = [];
+            
+            // Accoppia le coppie per creare le partite usando algoritmo greedy
+            const usedPairs = new Set<number>();
+            
+            while (dayMatches.length < 4 && usedPairs.size < pairsAsLightPlayers.length) {
+              let bestMatch: { teamA: LightPlayer[], teamB: LightPlayer[] } | null = null;
+              let bestWeight = Infinity;
+              let bestI = -1;
+              let bestJ = -1;
+              
+              // Trova la migliore coppia di coppie
+              for (let i = 0; i < pairsAsLightPlayers.length; i++) {
+                if (usedPairs.has(i)) continue;
+                
+                for (let j = i + 1; j < pairsAsLightPlayers.length; j++) {
+                  if (usedPairs.has(j)) continue;
+                  
+                  const pair1 = pairsAsLightPlayers[i];
+                  const pair2 = pairsAsLightPlayers[j];
+                  
+                  // Calcola punteggio totale delle coppie
+                  const score1 = (pair1[0].points || 0) + (pair1[1].points || 0);
+                  const score2 = (pair2[0].points || 0) + (pair2[1].points || 0);
+                  const scoreDiff = Math.abs(score1 - score2);
+                  
+                  // Penalità per avversari già incontrati
+                  let opponentPenalty = 0;
+                  for (const p1 of pair1) {
+                    for (const p2 of pair2) {
+                      const key = pairKey(p1.id || "", p2.id || "");
+                      if (opponentPairs.has(key)) {
+                        opponentPenalty += 10;
+                      }
+                    }
+                  }
+                  
+                  const weight = scoreDiff + opponentPenalty;
+                  
+                  if (weight < bestWeight) {
+                    bestWeight = weight;
+                    bestMatch = { teamA: pair1, teamB: pair2 };
+                    bestI = i;
+                    bestJ = j;
+                  }
+                }
+              }
+              
+              if (bestMatch) {
+                dayMatches.push(bestMatch);
+                usedPairs.add(bestI);
+                usedPairs.add(bestJ);
+              } else {
+                break;
+              }
+            }
+            
+            if (dayMatches.length === 4) {
+              console.log(`✅ ${dayMatches.length} partite create dalle coppie predefinite`);
+              
+              // FASE 2-4: Ottimizza avversari per punteggi, game e varietà
+              intelligentMatches = optimizeOpponents(dayMatches, playerScores, playerGames, opponentPairs);
+              console.log(`✅ Ottimizzazione completata: ${intelligentMatches.length} partite ottimizzate`);
+            } else {
+              console.warn(`⚠️ Solo ${dayMatches.length} partite create invece di 4`);
+            }
+          } else {
+            console.warn(`⚠️ Solo ${pairsAsLightPlayers.length} coppie valide invece di 4+`);
+          }
+        } else {
+          console.warn(`⚠️ Calendario ha solo ${predefinedPairs.length} coppie invece di 4+`);
+        }
+      } else {
+        console.warn(`⚠️ Giornata ${nextMatchday} non trovata nel calendario (indice ${dayIndex})`);
+      }
+    } else {
+      console.warn("⚠️ Calendario predefinito non trovato nel database");
     }
+  } catch (error: any) {
+    console.error("❌ Errore lettura calendario:", error.message);
   }
   
-  // Fallback: Se il calendario perfetto non funziona, usa algoritmo intelligente
+  // Fallback: Se il calendario predefinito non funziona, usa algoritmo intelligente tradizionale
   if (intelligentMatches.length === 0) {
-    console.log("🔄 Fallback: Usando algoritmo intelligente tradizionale");
+    console.log("🔄 Fallback: Usando algoritmo intelligente tradizionale (senza calendario predefinito)");
     intelligentMatches = generateIntelligentPairings(
       playersWithCurrentPoints,
       teammatePairs,
