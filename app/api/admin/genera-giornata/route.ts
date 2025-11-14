@@ -1053,9 +1053,7 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
     const getGameDiff = (playerId: string) => {
       const standing = standings.find(s => s.playerId === playerId);
       if (standing) {
-        return standing.gameDiff !== undefined 
-          ? standing.gameDiff 
-          : (standing.gamesWon || 0) - (standing.gamesLost || 0);
+        return (standing.gamesWon || 0) - (standing.gamesLost || 0);
       }
       return 0;
     };
