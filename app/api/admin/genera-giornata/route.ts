@@ -488,10 +488,10 @@ async function calculateCurrentStandings(db: FirebaseFirestore.Firestore) {
   type Acc = { name: string; points: number; wins: number };
   const map = new Map<string, Acc>();
 
-  const add = (pid: string, name: string, points: number, win: boolean) => {
+  const add = (pid: string, name: string, setsWon: number) => {
     const cur = map.get(pid) || { name, points: 0, wins: 0 };
-    cur.points += points;
-    if (win) cur.wins += 1;
+    // I punti nella classifica sono calcolati come: 1 punto per ogni set vinto
+    cur.points += setsWon;
     map.set(pid, cur);
   };
 
@@ -501,14 +501,15 @@ async function calculateCurrentStandings(db: FirebaseFirestore.Firestore) {
     const b: LightPlayer[] = (m.teamB || []).map(toLight);
     
     if (a.length >= 2 && b.length >= 2 && typeof m.scoreA === "number" && typeof m.scoreB === "number") {
-      const aWins = m.scoreA > m.scoreB;
-      const pointsA = aWins ? 3 : (m.scoreA === m.scoreB ? 1 : 0);
-      const pointsB = !aWins ? 3 : (m.scoreA === m.scoreB ? 1 : 0);
+      // scoreA e scoreB rappresentano i set vinti da ogni squadra
+      // I punti sono calcolati come: 1 punto per ogni set vinto
+      const setsWonA = m.scoreA || 0;
+      const setsWonB = m.scoreB || 0;
       
-      add(a[0].id || "", a[0].name, pointsA, aWins);
-      add(a[1].id || "", a[1].name, pointsA, aWins);
-      add(b[0].id || "", b[0].name, pointsB, !aWins);
-      add(b[1].id || "", b[1].name, pointsB, !aWins);
+      add(a[0].id || "", a[0].name, setsWonA);
+      add(a[1].id || "", a[1].name, setsWonA);
+      add(b[0].id || "", b[0].name, setsWonB);
+      add(b[1].id || "", b[1].name, setsWonB);
     }
   }
 
@@ -531,14 +532,117 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
     return { created: 0, reason: "not-enough-players" as const };
   }
 
-  // Calcola la classifica attuale per ottenere i punteggi corretti
-  const standings = await calculateCurrentStandings(db);
+  // Leggi la classifica direttamente dal database o calcolala dalle partite
+  // Usa la stessa logica di app/lib/standings.ts per garantire coerenza
+  const matchesSnapForStandings = await db
+    .collection("matches")
+    .where("phase", "==", "campionato")
+    .where("status", "==", "completed")
+    .get();
+
+  // Calcola classifica con la stessa logica della UI
+  const standingsMap = new Map<string, {
+    playerId: string;
+    name: string;
+    points: number; // P: punti (1 per ogni set vinto)
+    gamesWon: number; // GV: game vinti
+    gamesLost: number; // GP: game persi
+    setsWon: number;
+    setsLost: number;
+  }>();
+
+  const ensureStanding = (playerId: string, name: string) => {
+    if (!standingsMap.has(playerId)) {
+      standingsMap.set(playerId, {
+        playerId,
+        name,
+        points: 0,
+        gamesWon: 0,
+        gamesLost: 0,
+        setsWon: 0,
+        setsLost: 0
+      });
+    }
+    return standingsMap.get(playerId)!;
+  };
+
+  // Calcola classifica dalle partite completate
+  for (const doc of matchesSnapForStandings.docs) {
+    const m = doc.data() as any;
+    const teamA = m.teamA || [];
+    const teamB = m.teamB || [];
+    
+    if (teamA.length < 2 || teamB.length < 2) continue;
+    
+    // Calcola set vinti da ogni squadra
+    let setsWonA = 0;
+    let setsWonB = 0;
+    
+    // Se ci sono i set nel formato array
+    if (m.sets && Array.isArray(m.sets)) {
+      for (const s of m.sets) {
+        if (Array.isArray(s)) {
+          const [ga, gb] = s;
+          if (typeof ga === 'number' && typeof gb === 'number' && ga !== gb) {
+            if (ga > gb) setsWonA += 1;
+            else setsWonB += 1;
+          }
+        } else if (s && (s as any).winner) {
+          if ((s as any).winner === 'A') setsWonA += 1;
+          if ((s as any).winner === 'B') setsWonB += 1;
+        }
+      }
+    } else {
+      // Fallback: usa scoreA e scoreB come set vinti
+      setsWonA = Number(m.scoreA || 0);
+      setsWonB = Number(m.scoreB || 0);
+    }
+    
+    // Calcola game vinti
+    const gamesWonA = Number(m.totalGamesA || 0);
+    const gamesWonB = Number(m.totalGamesB || 0);
+    
+    // Aggiorna statistiche per team A
+    for (const p of teamA) {
+      const playerId = p.id || p.uid || '';
+      const playerName = p.name || p.username || p.displayName || '';
+      if (playerId) {
+        const s = ensureStanding(playerId, playerName);
+        s.points += setsWonA; // 1 punto per ogni set vinto
+        s.setsWon += setsWonA;
+        s.setsLost += setsWonB;
+        s.gamesWon += gamesWonA;
+        s.gamesLost += gamesWonB;
+      }
+    }
+    
+    // Aggiorna statistiche per team B
+    for (const p of teamB) {
+      const playerId = p.id || p.uid || '';
+      const playerName = p.name || p.username || p.displayName || '';
+      if (playerId) {
+        const s = ensureStanding(playerId, playerName);
+        s.points += setsWonB; // 1 punto per ogni set vinto
+        s.setsWon += setsWonB;
+        s.setsLost += setsWonA;
+        s.gamesWon += gamesWonB;
+        s.gamesLost += gamesWonA;
+      }
+    }
+  }
   
-  // Aggiorna i punteggi dei giocatori con quelli della classifica attuale
-  const playersWithCurrentPoints = players.map(player => ({
-    ...player,
-    points: standings.find(s => s.playerId === player.id)?.points || 0
-  }));
+  // Converti in array
+  const standings = Array.from(standingsMap.values());
+  
+  // Aggiorna i punteggi e game dei giocatori con quelli della classifica
+  const playersWithCurrentPoints = players.map(player => {
+    const standing = standings.find(s => s.playerId === player.id);
+    return {
+      ...player,
+      points: standing?.points || 0,
+      gamesWon: standing?.gamesWon || 0
+    };
+  });
 
   // storico campionato
   const matchesSnap = await db.collection("matches").where("phase", "==", "campionato").get();
@@ -640,48 +744,25 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
     return { created: 0, reason: "not-enough-players" as const };
   }
 
-  // Calcola punteggi attuali per bilanciamento
+  // Usa i punteggi e game già calcolati dalla classifica
   const playerScores = new Map<string, number>();
   const playerGames = new Map<string, { gamesWon: number; gamesLost: number }>();
-  for (const p of players) {
-    playerScores.set(p.id || "", 0);
-    playerGames.set(p.id || "", { gamesWon: 0, gamesLost: 0 });
+  
+  // Popola le mappe con i dati dalla classifica calcolata
+  for (const standing of standings) {
+    playerScores.set(standing.playerId, standing.points);
+    playerGames.set(standing.playerId, { 
+      gamesWon: standing.gamesWon, 
+      gamesLost: standing.gamesLost
+    });
   }
   
-  // Somma i punteggi e game dalle partite completate
-  for (const m of completedMatches) {
-    const a: LightPlayer[] = (m.teamA || []).map(toLight);
-    const b: LightPlayer[] = (m.teamB || []).map(toLight);
-    const scoreA = Number(m.scoreA || 0);
-    const scoreB = Number(m.scoreB || 0);
-    const gamesA = Number(m.totalGamesA || 0);
-    const gamesB = Number(m.totalGamesB || 0);
-    
-    a.forEach(p => {
-      if (p.id) {
-        const currentScore = playerScores.get(p.id) || 0;
-        playerScores.set(p.id, currentScore + scoreA);
-        
-        const currentGames = playerGames.get(p.id) || { gamesWon: 0, gamesLost: 0 };
-        playerGames.set(p.id, {
-          gamesWon: currentGames.gamesWon + gamesA,
-          gamesLost: currentGames.gamesLost + gamesB
-        });
-      }
-    });
-    
-    b.forEach(p => {
-      if (p.id) {
-        const currentScore = playerScores.get(p.id) || 0;
-        playerScores.set(p.id, currentScore + scoreB);
-        
-        const currentGames = playerGames.get(p.id) || { gamesWon: 0, gamesLost: 0 };
-        playerGames.set(p.id, {
-          gamesWon: currentGames.gamesWon + gamesB,
-          gamesLost: currentGames.gamesLost + gamesA
-        });
-      }
-    });
+  // Assicurati che tutti i giocatori siano nella mappa (anche quelli senza partite)
+  for (const p of players) {
+    if (!playerScores.has(p.id || "")) {
+      playerScores.set(p.id || "", 0);
+      playerGames.set(p.id || "", { gamesWon: 0, gamesLost: 0 });
+    }
   }
 
   // NUOVO ALGORITMO: Usa coppie predefinite dal calendario + Ottimizzazione avversari
@@ -761,70 +842,172 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
           if (pairsAsLightPlayers.length >= 4) {
             console.log(`✅ ${pairsAsLightPlayers.length} coppie convertite correttamente`);
             
-            // Crea partite candidate dalle coppie (ogni coppia diventa teamA, serve teamB)
-            const dayMatches: { teamA: LightPlayer[], teamB: LightPlayer[] }[] = [];
+            // NUOVO ALGORITMO: Ordina per punteggio totale e accoppia in sequenza
+            // Con permutazioni quando ci sono pareggi per minimizzare incontri precedenti
             
-            // Accoppia le coppie per creare le partite usando algoritmo greedy
-            const usedPairs = new Set<number>();
+            // Calcola punteggi totali per ogni coppia
+            const pairsWithScores = pairsAsLightPlayers.map((pair, index) => {
+              const score1 = (pair[0].points || 0);
+              const score2 = (pair[1].points || 0);
+              const totalScore = score1 + score2;
+              return {
+                pair,
+                totalScore,
+                index
+              };
+            });
             
-            while (dayMatches.length < 4 && usedPairs.size < pairsAsLightPlayers.length) {
-              let bestMatch: { teamA: LightPlayer[], teamB: LightPlayer[] } | null = null;
-              let bestWeight = Infinity;
-              let bestI = -1;
-              let bestJ = -1;
-              
-              // Trova la migliore coppia di coppie
-              for (let i = 0; i < pairsAsLightPlayers.length; i++) {
-                if (usedPairs.has(i)) continue;
-                
-                for (let j = i + 1; j < pairsAsLightPlayers.length; j++) {
-                  if (usedPairs.has(j)) continue;
-                  
-                  const pair1 = pairsAsLightPlayers[i];
-                  const pair2 = pairsAsLightPlayers[j];
-                  
-                  // Calcola punteggio totale delle coppie
-                  const score1 = (pair1[0].points || 0) + (pair1[1].points || 0);
-                  const score2 = (pair2[0].points || 0) + (pair2[1].points || 0);
-                  const scoreDiff = Math.abs(score1 - score2);
-                  
-                  // Penalità per avversari già incontrati
-                  let opponentPenalty = 0;
-                  for (const p1 of pair1) {
-                    for (const p2 of pair2) {
-                      const key = pairKey(p1.id || "", p2.id || "");
-                      if (opponentPairs.has(key)) {
-                        opponentPenalty += 10;
-                      }
-                    }
-                  }
-                  
-                  const weight = scoreDiff + opponentPenalty;
-                  
-                  if (weight < bestWeight) {
-                    bestWeight = weight;
-                    bestMatch = { teamA: pair1, teamB: pair2 };
-                    bestI = i;
-                    bestJ = j;
+            // Ordina per punteggio totale (decrescente)
+            pairsWithScores.sort((a, b) => {
+              if (b.totalScore !== a.totalScore) {
+                return b.totalScore - a.totalScore;
+              }
+              // In caso di pareggio, ordina per nome (per stabilità)
+              const nameA = (a.pair[0].name || '').toLowerCase();
+              const nameB = (b.pair[0].name || '').toLowerCase();
+              return nameA.localeCompare(nameB);
+            });
+            
+            console.log(`🔄 Coppie ordinate per punteggio totale:`);
+            pairsWithScores.forEach((p, idx) => {
+              const p1Score = p.pair[0].points || 0;
+              const p2Score = p.pair[1].points || 0;
+              console.log(`   ${idx + 1}. ${p.pair[0].name}(${p1Score}) + ${p.pair[1].name}(${p2Score}) = ${p.totalScore}`);
+            });
+            
+            // Funzione per contare gli incontri precedenti tra due coppie
+            function countOpponentMatches(pair1: LightPlayer[], pair2: LightPlayer[]): number {
+              let count = 0;
+              for (const p1 of pair1) {
+                for (const p2 of pair2) {
+                  const key = pairKey(p1.id || "", p2.id || "");
+                  if (opponentPairs.has(key)) {
+                    count++;
                   }
                 }
               }
+              return count;
+            }
+            
+            // Funzione per trovare il miglior avversario per una coppia data
+            function findBestOpponent(pairIndex: number, startFromIndex: number, usedPairs: Set<number>): number {
+              const currentPair = pairsWithScores[pairIndex].pair;
+              const currentScore = pairsWithScores[pairIndex].totalScore;
               
-              if (bestMatch) {
-                dayMatches.push(bestMatch);
-                usedPairs.add(bestI);
-                usedPairs.add(bestJ);
-              } else {
+              // Trova tutte le coppie disponibili con lo stesso punteggio
+              const sameScoreOpponents: { index: number; matches: number }[] = [];
+              // Trova anche tutte le altre coppie disponibili
+              const otherOpponents: { index: number; matches: number; score: number }[] = [];
+              
+              for (let j = startFromIndex; j < pairsWithScores.length; j++) {
+                if (usedPairs.has(j)) continue;
+                
+                const opponentScore = pairsWithScores[j].totalScore;
+                const matchesCount = countOpponentMatches(currentPair, pairsWithScores[j].pair);
+                
+                if (opponentScore === currentScore) {
+                  // Stesso punteggio: priorità alta
+                  sameScoreOpponents.push({ index: j, matches: matchesCount });
+                } else {
+                  // Punteggio diverso: priorità bassa
+                  otherOpponents.push({ index: j, matches: matchesCount, score: opponentScore });
+                }
+              }
+              
+              // Se ci sono coppie con lo stesso punteggio, scegli quella con meno incontri
+              if (sameScoreOpponents.length > 0) {
+                sameScoreOpponents.sort((a, b) => a.matches - b.matches);
+                console.log(`   🔍 Trovate ${sameScoreOpponents.length} coppie con stesso punteggio (${currentScore}), scelta quella con ${sameScoreOpponents[0].matches} incontri`);
+                return sameScoreOpponents[0].index;
+              }
+              
+              // Altrimenti, prendi la prossima coppia disponibile (con punteggio diverso)
+              // Ordina per posizione (più vicina possibile)
+              if (otherOpponents.length > 0) {
+                otherOpponents.sort((a, b) => a.index - b.index);
+                console.log(`   🔍 Nessuna coppia con stesso punteggio, scelta prossima disponibile (posizione ${otherOpponents[0].index + 1})`);
+                return otherOpponents[0].index;
+              }
+              
+              return -1; // Nessun avversario disponibile
+            }
+            
+            // Crea partite accoppiando in sequenza (1° vs 2°, 3° vs 4°, ecc.)
+            // Ma considera permutazioni quando ci sono pareggi
+            const dayMatches: { teamA: LightPlayer[], teamB: LightPlayer[] }[] = [];
+            const usedPairs = new Set<number>();
+            
+            let i = 0;
+            while (i < pairsWithScores.length && dayMatches.length < 4) {
+              // Salta se questa coppia è già stata usata
+              if (usedPairs.has(i)) {
+                i++;
+                continue;
+              }
+              
+              const pair1 = pairsWithScores[i].pair;
+              
+              // Trova il miglior avversario per pair1
+              const bestOpponentIndex = findBestOpponent(i, i + 1, usedPairs);
+              
+              if (bestOpponentIndex === -1) {
+                console.warn(`⚠️ Nessun avversario disponibile per la coppia ${i + 1}`);
                 break;
+              }
+              
+              const pair2 = pairsWithScores[bestOpponentIndex].pair;
+              const opponentMatches = countOpponentMatches(pair1, pair2);
+              
+              // Log se abbiamo fatto una permutazione
+              if (bestOpponentIndex !== i + 1) {
+                console.log(`   🔄 Permutazione: posizione ${i + 1} vs ${bestOpponentIndex + 1} (invece di ${i + 1} vs ${i + 2}) - Incontri: ${opponentMatches}`);
+              }
+              
+              dayMatches.push({
+                teamA: pair1,
+                teamB: pair2
+              });
+              
+              usedPairs.add(i);
+              usedPairs.add(bestOpponentIndex);
+              
+              console.log(`   ✅ Partita: ${pair1[0].name} + ${pair1[1].name} (${pairsWithScores[i].totalScore}) vs ${pair2[0].name} + ${pair2[1].name} (${pairsWithScores[bestOpponentIndex].totalScore}) - Incontri: ${opponentMatches}`);
+              
+              // Avanza alla prossima coppia non usata
+              i++;
+              while (i < pairsWithScores.length && usedPairs.has(i)) {
+                i++;
               }
             }
             
             if (dayMatches.length === 4) {
               console.log(`✅ ${dayMatches.length} partite create dalle coppie predefinite`);
               
-              // FASE 2-4: Ottimizza avversari per punteggi, game e varietà
-              intelligentMatches = optimizeOpponents(dayMatches, playerScores, playerGames, opponentPairs);
-              console.log(`✅ Ottimizzazione completata: ${intelligentMatches.length} partite ottimizzate`);
+              // Converti in MatchCandidate per compatibilità con il resto del codice
+              intelligentMatches = dayMatches.map(match => {
+                const scoreA = (playerScores.get(match.teamA[0].id || "") || 0) + 
+                               (playerScores.get(match.teamA[1].id || "") || 0);
+                const scoreB = (playerScores.get(match.teamB[0].id || "") || 0) + 
+                               (playerScores.get(match.teamB[1].id || "") || 0);
+                const scoreDiff = Math.abs(scoreA - scoreB);
+                let opponentRepeatPenalty = 0;
+                for (const playerA of match.teamA) {
+                  for (const playerB of match.teamB) {
+                    const opponentKey = pairKey(playerA.id || "", playerB.id || "");
+                    if (opponentPairs.has(opponentKey)) {
+                      opponentRepeatPenalty += 50;
+                    }
+                  }
+                }
+                return {
+                  teamA: match.teamA,
+                  teamB: match.teamB,
+                  weight: (scoreDiff * 100) + opponentRepeatPenalty,
+                  scoreA,
+                  scoreB
+                };
+              });
+              console.log(`✅ Partite ottimizzate: ${intelligentMatches.length}`);
             } else {
               console.warn(`⚠️ Solo ${dayMatches.length} partite create invece di 4`);
             }
@@ -866,6 +1049,22 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
 
   // Crea le partite generate dall'algoritmo intelligente
   for (const match of intelligentMatches) {
+    // Calcola la differenza game (DG) per ogni giocatore dalla classifica
+    const getGameDiff = (playerId: string) => {
+      const standing = standings.find(s => s.playerId === playerId);
+      if (standing) {
+        return standing.gameDiff !== undefined 
+          ? standing.gameDiff 
+          : (standing.gamesWon || 0) - (standing.gamesLost || 0);
+      }
+      return 0;
+    };
+    
+    const teamAPlayer1GameDiff = getGameDiff(match.teamA[0].id || "");
+    const teamAPlayer2GameDiff = getGameDiff(match.teamA[1].id || "");
+    const teamBPlayer1GameDiff = getGameDiff(match.teamB[0].id || "");
+    const teamBPlayer2GameDiff = getGameDiff(match.teamB[1].id || "");
+    
     const matchDoc = {
       phase: "campionato",
       status: "scheduled",
@@ -877,16 +1076,36 @@ async function generateCampionatoGiornata(db: FirebaseFirestore.Firestore) {
       teamB: match.teamB,
       matchday: nextMatchday,
       giornata: Date.now(), // Identificatore univoco per la giornata
-      // Salva i punteggi al momento della generazione per il log
+      // Salva i punteggi e differenza game al momento della generazione (non vengono più aggiornati)
       generationPoints: {
         teamA: {
-          player1: { id: match.teamA[0].id, name: match.teamA[0].name, points: match.teamA[0].points || 0 },
-          player2: { id: match.teamA[1].id, name: match.teamA[1].name, points: match.teamA[1].points || 0 },
+          player1: { 
+            id: match.teamA[0].id, 
+            name: match.teamA[0].name, 
+            points: match.teamA[0].points || 0,
+            gameDiff: teamAPlayer1GameDiff
+          },
+          player2: { 
+            id: match.teamA[1].id, 
+            name: match.teamA[1].name, 
+            points: match.teamA[1].points || 0,
+            gameDiff: teamAPlayer2GameDiff
+          },
           total: (match.teamA[0].points || 0) + (match.teamA[1].points || 0)
         },
         teamB: {
-          player1: { id: match.teamB[0].id, name: match.teamB[0].name, points: match.teamB[0].points || 0 },
-          player2: { id: match.teamB[1].id, name: match.teamB[1].name, points: match.teamB[1].points || 0 },
+          player1: { 
+            id: match.teamB[0].id, 
+            name: match.teamB[0].name, 
+            points: match.teamB[0].points || 0,
+            gameDiff: teamBPlayer1GameDiff
+          },
+          player2: { 
+            id: match.teamB[1].id, 
+            name: match.teamB[1].name, 
+            points: match.teamB[1].points || 0,
+            gameDiff: teamBPlayer2GameDiff
+          },
           total: (match.teamB[0].points || 0) + (match.teamB[1].points || 0)
         }
       }

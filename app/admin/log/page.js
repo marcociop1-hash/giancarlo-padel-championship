@@ -30,47 +30,48 @@ function teamLabel(team, players = [], standings = [], match = null) {
   const standingA = standings.find(s => s.playerId === t.a.id);
   const standingB = standings.find(s => s.playerId === t.b.id);
   
-  // PRIORITÀ: Usa i punteggi salvati al momento della generazione se disponibili
-  let scoreA, scoreB, totalScore;
+  // PRIORITÀ: Usa i punteggi e gameDiff salvati al momento della generazione se disponibili
+  let scoreA, scoreB, totalScore, gameDiffA, gameDiffB;
   
   if (match && match.generationPoints) {
-    // Usa i punteggi al momento della generazione
+    // Usa i dati al momento della generazione (non vengono più aggiornati)
     const isTeamA = match.teamA && match.teamA.some(p => p.id === t.a.id);
     if (isTeamA) {
       scoreA = match.generationPoints.teamA.player1.points;
       scoreB = match.generationPoints.teamA.player2.points;
       totalScore = match.generationPoints.teamA.total;
+      gameDiffA = match.generationPoints.teamA.player1.gameDiff !== undefined 
+        ? match.generationPoints.teamA.player1.gameDiff 
+        : 0;
+      gameDiffB = match.generationPoints.teamA.player2.gameDiff !== undefined 
+        ? match.generationPoints.teamA.player2.gameDiff 
+        : 0;
     } else {
       scoreA = match.generationPoints.teamB.player1.points;
       scoreB = match.generationPoints.teamB.player2.points;
       totalScore = match.generationPoints.teamB.total;
+      gameDiffA = match.generationPoints.teamB.player1.gameDiff !== undefined 
+        ? match.generationPoints.teamB.player1.gameDiff 
+        : 0;
+      gameDiffB = match.generationPoints.teamB.player2.gameDiff !== undefined 
+        ? match.generationPoints.teamB.player2.gameDiff 
+        : 0;
     }
   } else {
-    // Fallback: usa i punteggi dalla classifica attuale
+    // Fallback: usa i dati dalla classifica attuale
     scoreA = standingA?.points || 0;
     scoreB = standingB?.points || 0;
     totalScore = scoreA + scoreB;
+    gameDiffA = standingA?.gameDiff !== undefined 
+      ? standingA.gameDiff 
+      : (standingA?.gamesWon || 0) - (standingA?.gamesLost || 0);
+    gameDiffB = standingB?.gameDiff !== undefined 
+      ? standingB.gameDiff 
+      : (standingB?.gamesWon || 0) - (standingB?.gamesLost || 0);
   }
   
-  // Se abbiamo i dati della partita, mostra i game di questa partita specifica
-  if (match && match.totalGamesA !== undefined && match.totalGamesB !== undefined) {
-    // Determina se questa squadra è teamA o teamB
-    const isTeamA = match.teamA && match.teamA.some(p => p.id === t.a.id);
-    const matchGames = isTeamA ? match.totalGamesA : match.totalGamesB;
-    const opponentGames = isTeamA ? match.totalGamesB : match.totalGamesA;
-    
-    return `${t.a.name}(${scoreA}) & ${t.b.name}(${scoreB}) [${totalScore}] | Game: ${matchGames}-${opponentGames}`;
-  }
-  
-  // Fallback: usa i game totali del torneo
-  const gamesA = standingA?.gamesWon || 0;
-  const gamesLostA = standingA?.gamesLost || 0;
-  const gamesB = standingB?.gamesWon || 0;
-  const gamesLostB = standingB?.gamesLost || 0;
-  const totalGamesWon = gamesA + gamesB;
-  const totalGamesLost = gamesLostA + gamesLostB;
-  
-  return `${t.a.name}(${scoreA}) & ${t.b.name}(${scoreB}) [${totalScore}] | Game: ${totalGamesWon}-${totalGamesLost}`;
+  // Mostra sempre la differenza game (DG) di ogni giocatore (dai dati salvati o dalla classifica)
+  return `${t.a.name}(${scoreA}) & ${t.b.name}(${scoreB}) [${totalScore}] | Game: ${gameDiffA} - ${gameDiffB}`;
 }
 
 function getStatusColor(status) {
